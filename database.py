@@ -12,11 +12,9 @@ class DatabaseManager:
     def init_db(self):
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            # Drop existing table to reset schema
-            cursor.execute("DROP TABLE IF EXISTS notes")
-            # Create new table with title field
+            # Create table only if it doesn't exist (preserves existing data)
             cursor.execute("""
-                CREATE TABLE notes (
+                CREATE TABLE IF NOT EXISTS notes (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     title TEXT NOT NULL,
                     catatan TEXT NOT NULL,
