@@ -108,7 +108,7 @@ class MainWindow(QMainWindow):
         self.db = DatabaseManager()
         self.setWindowTitle("CS | Catat Segala")
         self.setGeometry(100, 100, 800, 500)
-        
+    
         self.create_menu_bar()
         
         central_widget = QWidget()
@@ -122,17 +122,20 @@ class MainWindow(QMainWindow):
         self.delete_btn = QPushButton("Hapus")
         self.detail_btn = QPushButton("Detail")
         self.refresh_btn = QPushButton("Refresh")
+        self.exit_btn = QPushButton("Keluar")
         
         self.add_btn.clicked.connect(self.add_note)
         self.edit_btn.clicked.connect(self.edit_note)
         self.delete_btn.clicked.connect(self.delete_note)
         self.detail_btn.clicked.connect(self.view_detail)
         self.refresh_btn.clicked.connect(self.load_notes)
+        self.exit_btn.clicked.connect(self.close)
         
         button_layout.addWidget(self.add_btn)
         button_layout.addWidget(self.edit_btn)
         button_layout.addWidget(self.delete_btn)
         button_layout.addWidget(self.detail_btn)
+        button_layout.addWidget(self.exit_btn)
         button_layout.addStretch()
         button_layout.addWidget(self.refresh_btn)
         
