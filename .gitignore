@@ -49,3 +49,4 @@ rc_*.py
 *.dylib
 *.o
 *.a
+.catat-segala

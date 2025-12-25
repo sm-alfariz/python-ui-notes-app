@@ -1,9 +1,16 @@
 import sqlite3
 from datetime import datetime
+import os
 
 class DatabaseManager:
     def __init__(self, db_name="notes.db"):
-        self.db_name = db_name
+        folder_name = ".catat-segala"
+        # Create the folder if it doesn't exist
+        if not os.path.exists(folder_name):
+            os.makedirs(folder_name)
+        # Construct the full path to the database file
+        database_path = os.path.join(folder_name, db_name)
+        self.db_name = database_path
         self.init_db()
 
     def get_connection(self):

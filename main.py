@@ -1,4 +1,5 @@
 import sys
+from datetime import datetime
 from PySide6.QtWidgets import (QApplication, QMainWindow, QTableWidget, 
                                QTableWidgetItem, QVBoxLayout, QWidget, QMenu,
                                QPushButton, QHBoxLayout, QDialog, QFormLayout,
@@ -196,6 +197,10 @@ class MainWindow(QMainWindow):
                     text_widget.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
                     text_widget.setMaximumHeight(60)
                     self.tableWidget.setCellWidget(row_index, col_index, text_widget)
+                elif col_index == 4:  # created_at column - format date
+                    formatted_date = self.format_date(data)
+                    item = QTableWidgetItem(formatted_date)
+                    self.tableWidget.setItem(row_index, col_index, item)
                 else:
                     item = QTableWidgetItem(str(data) if data is not None else "")
                     self.tableWidget.setItem(row_index, col_index, item)
@@ -294,6 +299,10 @@ class MainWindow(QMainWindow):
                     text_widget.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
                     text_widget.setMaximumHeight(60)
                     self.tableWidget.setCellWidget(row_index, col_index, text_widget)
+                elif col_index == 4:  # created_at column - format date
+                    formatted_date = self.format_date(data)
+                    item = QTableWidgetItem(formatted_date)
+                    self.tableWidget.setItem(row_index, col_index, item)
                 else:
                     item = QTableWidgetItem(str(data) if data is not None else "")
                     self.tableWidget.setItem(row_index, col_index, item)
@@ -302,6 +311,19 @@ class MainWindow(QMainWindow):
         self.tableWidget.resizeColumnsToContents()
         self.tableWidget.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
 
+    def format_date(self, date_str):
+        """Format date string to %d/%m/%Y %H:%M:%S format"""
+        if not date_str:
+            return ""
+        try:
+            # Parse the date from database format (YYYY-MM-DD HH:MM:SS)
+            dt = datetime.strptime(str(date_str), "%Y-%m-%d %H:%M:%S")
+            # Return formatted date
+            return dt.strftime("%d/%m/%Y %H:%M:%S")
+        except ValueError:
+            # If parsing fails, return the original string
+            return str(date_str)
+    
     def clear_search(self):
         self.search_input.clear()
         self.load_notes()
