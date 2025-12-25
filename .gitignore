@@ -51,3 +51,4 @@ rc_*.py
 *.a
 .catat-segala
 MY-NEED.md
+*.spec
