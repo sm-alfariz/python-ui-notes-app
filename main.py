@@ -1,9 +1,13 @@
 import sys
+import csv
+import shutil
+import os
 from datetime import datetime
 from PySide6.QtWidgets import (QApplication, QMainWindow, QTableWidget, 
                                QTableWidgetItem, QVBoxLayout, QWidget, QMenu,
                                QPushButton, QHBoxLayout, QDialog, QFormLayout,
-                               QLineEdit, QTextEdit, QMessageBox, QHeaderView)
+                               QLineEdit, QTextEdit, QMessageBox, QHeaderView,
+                               QFileDialog)
 from PySide6.QtGui import QAction
 from PySide6.QtCore import Qt
 from database import DatabaseManager
@@ -57,14 +61,11 @@ class NoteDetailDialog(QDialog):
         
         layout = QVBoxLayout(self)
         
-        # ID and Created At info
+        # Created At info
         info_layout = QFormLayout()
-        id_label = QLineEdit(str(note_data[0]) if note_data else "")
-        id_label.setReadOnly(True)
         created_label = QLineEdit(str(note_data[4]) if note_data and len(note_data) > 4 else "")
         created_label.setReadOnly(True)
         
-        info_layout.addRow("ID:", id_label)
         info_layout.addRow("Dibuat Pada:", created_label)
         layout.addLayout(info_layout)
         
@@ -165,6 +166,7 @@ class MainWindow(QMainWindow):
         self.tableWidget = QTableWidget()
         self.tableWidget.setColumnCount(5)
         self.tableWidget.setHorizontalHeaderLabels(["ID", "Judul", "Catatan", "Sumber", "Tgl/Jam"])
+        self.tableWidget.setColumnHidden(0, True)  # Hide ID field
         self.tableWidget.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
         self.tableWidget.setSelectionBehavior(QTableWidget.SelectRows)
         self.tableWidget.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -177,6 +179,16 @@ class MainWindow(QMainWindow):
     def create_menu_bar(self):
         menu_bar = self.menuBar()
         file_menu = menu_bar.addMenu("&File")
+        
+        export_action = QAction("&Export notes to CSV", self)
+        export_action.triggered.connect(self.export_to_csv)
+        file_menu.addAction(export_action)
+        
+        backup_action = QAction("&Backup Database", self)
+        backup_action.triggered.connect(self.backup_notes)
+        file_menu.addAction(backup_action)
+        
+        file_menu.addSeparator()
         
         exit_action = QAction("&Exit", self)
         exit_action.triggered.connect(self.close)
@@ -327,6 +339,43 @@ class MainWindow(QMainWindow):
     def clear_search(self):
         self.search_input.clear()
         self.load_notes()
+
+    def export_to_csv(self):
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "Simpan sebagai CSV", "", "CSV Files (*.csv)"
+        )
+        if not file_path:
+            return
+            
+        if not file_path.endswith('.csv'):
+            file_path += '.csv'
+            
+        try:
+            notes = self.db.get_all_notes()
+            with open(file_path, 'w', newline='', encoding='utf-8') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(["ID", "Judul", "Catatan", "Sumber", "Dibuat Pada"])
+                writer.writerows(notes)
+            QMessageBox.information(self, "Sukses", f"Catatan berhasil diekspor ke {file_path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Gagal mengekspor catatan: {str(e)}")
+
+    def backup_notes(self):
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "Backup Database", "notes_backup.db", "SQLite Database (*.db)"
+        )
+        if not file_path:
+            return
+            
+        try:
+            db_source = self.db.db_name
+            if os.path.exists(db_source):
+                shutil.copy2(db_source, file_path)
+                QMessageBox.information(self, "Sukses", f"Database berhasil di-backup ke {file_path}")
+            else:
+                QMessageBox.warning(self, "Peringatan", "File database tidak ditemukan.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Gagal mem-backup database: {str(e)}")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
