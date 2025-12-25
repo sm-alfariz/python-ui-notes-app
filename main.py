@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QTableWidget,
                                QPushButton, QHBoxLayout, QDialog, QFormLayout,
                                QLineEdit, QTextEdit, QMessageBox, QHeaderView,
                                QFileDialog, QLabel)
-from PySide6.QtGui import QAction, QColor
+from PySide6.QtGui import QAction
 from PySide6.QtCore import Qt
 from database import DatabaseManager
 
