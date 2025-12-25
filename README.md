@@ -23,7 +23,8 @@ then run the app with `python -m main`
 6. detail note with double click at current row show window dialog
 7. refresh note show list of notes in table with refresh button
 8. support html in catatan field, and you can paste from some web example
-
+9. export note to csv
+10. backup database Sqlite3 format 
 ## pyinstaller
 
 if you want to make it standalone app you can use pyinstaller
