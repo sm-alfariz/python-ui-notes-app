@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QTableWidget,
                                QPushButton, QHBoxLayout, QDialog, QFormLayout,
                                QLineEdit, QTextEdit, QMessageBox, QHeaderView,
                                QFileDialog, QLabel)
-from PySide6.QtGui import QAction
+from PySide6.QtGui import (QAction)
 from PySide6.QtCore import Qt
 from database import DatabaseManager
 
@@ -199,7 +199,7 @@ class MainWindow(QMainWindow):
     def show_about(self):
         about_dialog = QMessageBox()
         about_dialog.setIcon(QMessageBox.Information)
-        about_dialog.setText("CS | Catat Segala")
+        about_dialog.setText("<u>CS | Catat Segala</u>")
         about_dialog.setInformativeText("is Simple note with PyQt6 and Sqlite3 this is open source go to github repository <a href='https://github.com/fendoz/catat-segala'> github link</a> for the code")
         about_dialog.setStandardButtons(QMessageBox.Close)
         about_dialog.exec_()
