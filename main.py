@@ -175,6 +175,11 @@ class MainWindow(QMainWindow):
     def create_menu_bar(self):
         menu_bar = self.menuBar()
         file_menu = menu_bar.addMenu("&File")
+        about_menu = menu_bar.addMenu("&About")
+        
+        about_action = QAction("&About", self)
+        about_action.triggered.connect(self.show_about)
+        about_menu.addAction(about_action)
         
         export_action = QAction("&Export notes to CSV", self)
         export_action.triggered.connect(self.export_to_csv)
@@ -190,6 +195,14 @@ class MainWindow(QMainWindow):
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
 
+    def show_about(self):
+        about_dialog = QMessageBox()
+        about_dialog.setIcon(QMessageBox.Information)
+        about_dialog.setText("CS | Catat Segala")
+        about_dialog.setInformativeText("is Simple note with PyQt6 and Sqlite3 this is open source go to github repository <a href='https://github.com/fendoz/catat-segala'> github link</a> for the code")
+        about_dialog.setStandardButtons(QMessageBox.Close)
+        about_dialog.exec_()
+        
     def display_notes(self, notes=None):
         """Unified method to display notes in the table."""
         if notes is None:
