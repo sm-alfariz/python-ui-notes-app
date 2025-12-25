@@ -2,13 +2,14 @@ import sys
 import csv
 import shutil
 import os
+import re
 from datetime import datetime
 from PySide6.QtWidgets import (QApplication, QMainWindow, QTableWidget, 
                                QTableWidgetItem, QVBoxLayout, QWidget, QMenu,
                                QPushButton, QHBoxLayout, QDialog, QFormLayout,
                                QLineEdit, QTextEdit, QMessageBox, QHeaderView,
-                               QFileDialog)
-from PySide6.QtGui import QAction
+                               QFileDialog, QLabel)
+from PySide6.QtGui import QAction, QColor
 from PySide6.QtCore import Qt
 from database import DatabaseManager
 
@@ -17,7 +18,7 @@ class NoteDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Tambah Catatan" if note_data is None else "Ubah Catatan")
         self.setMinimumWidth(500)
-        self.setMinimumHeight(300)
+        self.setMinimumHeight(400)
         
         layout = QFormLayout(self)
         
@@ -28,7 +29,8 @@ class NoteDialog(QDialog):
         
         if note_data:
             self.title_input.setText(note_data[1] if note_data[1] else "")
-            self.catatan_input.setHtml(note_data[2])  # Use setHtml instead of setPlainText
+            # note_data[2] is the HTML content
+            self.catatan_input.setHtml(note_data[2])
             self.sumber_input.setText(note_data[3] if note_data[3] else "")
             
         layout.addRow("Judul:", self.title_input)
@@ -37,6 +39,7 @@ class NoteDialog(QDialog):
         
         buttons = QHBoxLayout()
         self.save_button = QPushButton("Simpan")
+        self.save_button.setDefault(True)
         self.save_button.clicked.connect(self.accept)
         self.cancel_button = QPushButton("Batal")
         self.cancel_button.clicked.connect(self.reject)
@@ -57,42 +60,32 @@ class NoteDetailDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Detail Catatan")
         self.setMinimumWidth(600)
-        self.setMinimumHeight(400)
+        self.setMinimumHeight(450)
         
         layout = QVBoxLayout(self)
         
-        # Created At info
+        # Details section
         info_layout = QFormLayout()
-        created_label = QLineEdit(str(note_data[4]) if note_data and len(note_data) > 4 else "")
-        created_label.setReadOnly(True)
         
-        info_layout.addRow("Dibuat Pada:", created_label)
-        layout.addLayout(info_layout)
+        created_at = note_data[4] if note_data and len(note_data) > 4 else "-"
+        created_field = QLineEdit(str(created_at))
+        created_field.setReadOnly(True)
+        info_layout.addRow("Dibuat Pada:", created_field)
         
-        # Title
-        title_layout = QFormLayout()
         title_text = QLineEdit(note_data[1] if note_data and note_data[1] else "-")
         title_text.setReadOnly(True)
-        title_layout.addRow("Judul:", title_text)
-        layout.addLayout(title_layout)
+        info_layout.addRow("Judul:", title_text)
         
-        # Sumber
-        sumber_layout = QFormLayout()
         sumber_text = QLineEdit(note_data[3] if note_data and note_data[3] else "-")
         sumber_text.setReadOnly(True)
-        sumber_layout.addRow("Sumber:", sumber_text)
-        layout.addLayout(sumber_layout)
+        info_layout.addRow("Sumber:", sumber_text)
+        
+        layout.addLayout(info_layout)
         
         # Catatan content
-        layout.addWidget(QWidget())  # Spacer
-        catatan_label = QWidget()
-        catatan_label_layout = QVBoxLayout(catatan_label)
-        catatan_label_layout.setContentsMargins(0, 0, 0, 0)
-        from PySide6.QtWidgets import QLabel
         label = QLabel("Catatan:")
-        label.setStyleSheet("font-weight: bold;")
-        catatan_label_layout.addWidget(label)
-        layout.addWidget(catatan_label)
+        label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+        layout.addWidget(label)
         
         self.catatan_display = QTextEdit()
         self.catatan_display.setHtml(note_data[2] if note_data else "")
@@ -109,7 +102,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.db = DatabaseManager()
         self.setWindowTitle("CS | Catat Segala")
-        self.setGeometry(100, 100, 800, 500)
+        self.resize(900, 600)
     
         self.create_menu_bar()
         
@@ -117,7 +110,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
 
-        # Toolbar layout for buttons
+        # Toolbar layout
         button_layout = QHBoxLayout()
         self.add_btn = QPushButton("Tambah Catatan")
         self.edit_btn = QPushButton("Ubah")
@@ -130,29 +123,29 @@ class MainWindow(QMainWindow):
         self.edit_btn.clicked.connect(self.edit_note)
         self.delete_btn.clicked.connect(self.delete_note)
         self.detail_btn.clicked.connect(self.view_detail)
-        self.refresh_btn.clicked.connect(self.load_notes)
+        self.refresh_btn.clicked.connect(lambda: self.display_notes())
         self.exit_btn.clicked.connect(self.close)
         
         button_layout.addWidget(self.add_btn)
         button_layout.addWidget(self.edit_btn)
         button_layout.addWidget(self.delete_btn)
         button_layout.addWidget(self.detail_btn)
-        button_layout.addWidget(self.exit_btn)
         button_layout.addStretch()
         button_layout.addWidget(self.refresh_btn)
+        button_layout.addWidget(self.exit_btn)
         
         main_layout.addLayout(button_layout)
         
-        # Search bar layout
+        # Search bar
         search_layout = QHBoxLayout()
-        from PySide6.QtWidgets import QLabel
         search_label = QLabel("Cari:")
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Cari berdasarkan judul, catatan, atau sumber...")
-        self.search_input.returnPressed.connect(self.search_notes)
+        self.search_input.setPlaceholderText("Cari judul, isi, atau sumber...")
+        self.search_input.returnPressed.connect(self.perform_search)
+        
         self.search_btn = QPushButton("Cari")
+        self.search_btn.clicked.connect(self.perform_search)
         self.clear_search_btn = QPushButton("Clear")
-        self.search_btn.clicked.connect(self.search_notes)
         self.clear_search_btn.clicked.connect(self.clear_search)
         
         search_layout.addWidget(search_label)
@@ -162,19 +155,22 @@ class MainWindow(QMainWindow):
         
         main_layout.addLayout(search_layout)
 
-        # Create the table widget
+        # Table widget
         self.tableWidget = QTableWidget()
         self.tableWidget.setColumnCount(5)
         self.tableWidget.setHorizontalHeaderLabels(["ID", "Judul", "Catatan", "Sumber", "Tgl/Jam"])
-        self.tableWidget.setColumnHidden(0, True)  # Hide ID field
-        self.tableWidget.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        self.tableWidget.setColumnHidden(0, True)
         self.tableWidget.setSelectionBehavior(QTableWidget.SelectRows)
         self.tableWidget.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.tableWidget.doubleClicked.connect(self.view_detail)  # Add double-click handler
+        self.tableWidget.doubleClicked.connect(self.view_detail)
+        
+        header = self.tableWidget.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Interactive)
+        header.setSectionResizeMode(2, QHeaderView.Stretch)
         
         main_layout.addWidget(self.tableWidget)
         
-        self.load_notes()
+        self.display_notes()
 
     def create_menu_bar(self):
         menu_bar = self.menuBar()
@@ -194,47 +190,69 @@ class MainWindow(QMainWindow):
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
 
-    def load_notes(self):
-        notes = self.db.get_all_notes()
+    def display_notes(self, notes=None):
+        """Unified method to display notes in the table."""
+        if notes is None:
+            notes = self.db.get_all_notes()
+            
+        self.tableWidget.setRowCount(0)
         self.tableWidget.setRowCount(len(notes))
         
         for row_index, note in enumerate(notes):
-            for col_index, data in enumerate(note):
-                if col_index == 2:  # Catatan column - render HTML
-                    # Create a QTextEdit for displaying HTML
-                    text_widget = QTextEdit()
-                    text_widget.setHtml(str(data) if data is not None else "")
-                    text_widget.setReadOnly(True)
-                    text_widget.setFrameStyle(0)  # Remove frame
-                    text_widget.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-                    text_widget.setMaximumHeight(60)
-                    self.tableWidget.setCellWidget(row_index, col_index, text_widget)
-                elif col_index == 4:  # created_at column - format date
-                    formatted_date = self.format_date(data)
-                    item = QTableWidgetItem(formatted_date)
-                    self.tableWidget.setItem(row_index, col_index, item)
-                else:
-                    item = QTableWidgetItem(str(data) if data is not None else "")
-                    self.tableWidget.setItem(row_index, col_index, item)
-            # Set row height for each row inside the loop
-            self.tableWidget.setRowHeight(row_index, 60)
-        
-        self.tableWidget.resizeColumnsToContents()
-        self.tableWidget.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+            # note = (id, title, catatan_html, sumber, created_at)
+            
+            # ID (hidden)
+            self.tableWidget.setItem(row_index, 0, QTableWidgetItem(str(note[0])))
+            
+            # Title
+            self.tableWidget.setItem(row_index, 1, QTableWidgetItem(str(note[1])))
+            
+            # Catatan snippet (Optimized: No QTextEdit in main list)
+            # We strip HTML tags for the preview snippet to improve performance
+            catatan_text = self.strip_html(str(note[2]))
+            snippet = (catatan_text[:100] + "...") if len(catatan_text) > 100 else catatan_text
+            item_catatan = QTableWidgetItem(snippet)
+            item_catatan.setToolTip("Klik 2x atau klik 'Detail' untuk melihat format lengkap")
+            # Store the original HTML in the item data for retrieval if needed
+            item_catatan.setData(Qt.UserRole, note[2])
+            self.tableWidget.setItem(row_index, 2, item_catatan)
+            
+            # Sumber
+            self.tableWidget.setItem(row_index, 3, QTableWidgetItem(str(note[3]) if note[3] else "-"))
+            
+            # Date
+            formatted_date = self.format_date(note[4])
+            self.tableWidget.setItem(row_index, 4, QTableWidgetItem(formatted_date))
+            
+            self.tableWidget.setRowHeight(row_index, 35)
+
+    def strip_html(self, html_str):
+        """Simple utility to strip HTML tags for text preview."""
+        if not html_str: return ""
+        # Remove tags and replace some entities
+        clean = re.compile('<.*?>')
+        text = re.sub(clean, '', html_str)
+        return text.replace('&nbsp;', ' ').replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
+
+    def perform_search(self):
+        query = self.search_input.text().strip()
+        if not query:
+            self.display_notes()
+            return
+        notes = self.db.search_notes(query)
+        self.display_notes(notes)
 
     def add_note(self):
         dialog = NoteDialog(self)
         if dialog.exec():
             data = dialog.get_data()
-            if not data["title"].strip():
-                QMessageBox.warning(self, "Peringatan", "Judul tidak boleh kosong!")
+            if not data["title"].strip() or self.strip_html(data["catatan"]).strip() == "":
+                QMessageBox.warning(self, "Peringatan", "Judul dan Catatan tidak boleh kosong!")
                 return
-            if not data["catatan"].strip():
-                QMessageBox.warning(self, "Peringatan", "Catatan tidak boleh kosong!")
-                return
-            sumber = data["sumber"].strip() if data["sumber"].strip() else None
+                
+            sumber = data["sumber"].strip() or None
             self.db.add_note(data["title"], data["catatan"], sumber)
-            self.load_notes()
+            self.display_notes()
 
     def edit_note(self):
         selected_row = self.tableWidget.currentRow()
@@ -244,38 +262,34 @@ class MainWindow(QMainWindow):
             
         note_id = int(self.tableWidget.item(selected_row, 0).text())
         title = self.tableWidget.item(selected_row, 1).text()
-        # Get HTML content from the QTextEdit widget
-        catatan_widget = self.tableWidget.cellWidget(selected_row, 2)
-        catatan = catatan_widget.toHtml() if catatan_widget else ""
+        # Retrieve full HTML from UserRole data
+        catatan_html = self.tableWidget.item(selected_row, 2).data(Qt.UserRole)
         sumber = self.tableWidget.item(selected_row, 3).text()
+        if sumber == "-": sumber = ""
         
-        dialog = NoteDialog(self, (note_id, title, catatan, sumber))
+        dialog = NoteDialog(self, (note_id, title, catatan_html, sumber))
         if dialog.exec():
             data = dialog.get_data()
-            if not data["title"].strip():
-                QMessageBox.warning(self, "Peringatan", "Judul tidak boleh kosong!")
+            if not data["title"].strip() or self.strip_html(data["catatan"]).strip() == "":
+                QMessageBox.warning(self, "Peringatan", "Judul dan Catatan tidak boleh kosong!")
                 return
-            if not data["catatan"].strip():
-                QMessageBox.warning(self, "Peringatan", "Catatan tidak boleh kosong!")
-                return
-            sumber = data["sumber"].strip() if data["sumber"].strip() else None
+            
+            sumber = data["sumber"].strip() or None
             self.db.update_note(note_id, data["title"], data["catatan"], sumber)
-            self.load_notes()
+            self.display_notes()
 
     def view_detail(self):
         selected_row = self.tableWidget.currentRow()
         if selected_row < 0:
-            QMessageBox.warning(self, "Peringatan", "Pilih catatan yang ingin dilihat!")
             return
             
         note_id = int(self.tableWidget.item(selected_row, 0).text())
         title = self.tableWidget.item(selected_row, 1).text()
-        catatan_widget = self.tableWidget.cellWidget(selected_row, 2)
-        catatan = catatan_widget.toHtml() if catatan_widget else ""
+        catatan_html = self.tableWidget.item(selected_row, 2).data(Qt.UserRole)
         sumber = self.tableWidget.item(selected_row, 3).text()
         created_at = self.tableWidget.item(selected_row, 4).text()
         
-        dialog = NoteDetailDialog(self, (note_id, title, catatan, sumber, created_at))
+        dialog = NoteDetailDialog(self, (note_id, title, catatan_html, sumber, created_at))
         dialog.exec()
 
     def delete_note(self):
@@ -290,38 +304,7 @@ class MainWindow(QMainWindow):
         
         if reply == QMessageBox.Yes:
             self.db.delete_note(note_id)
-            self.load_notes()
-
-    def search_notes(self):
-        query = self.search_input.text().strip()
-        if not query:
-            QMessageBox.warning(self, "Peringatan", "Masukkan kata kunci pencarian!")
-            return
-        
-        notes = self.db.search_notes(query)
-        self.tableWidget.setRowCount(len(notes))
-        
-        for row_index, note in enumerate(notes):
-            for col_index, data in enumerate(note):
-                if col_index == 2:  # Catatan column - render HTML
-                    text_widget = QTextEdit()
-                    text_widget.setHtml(str(data) if data is not None else "")
-                    text_widget.setReadOnly(True)
-                    text_widget.setFrameStyle(0)
-                    text_widget.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-                    text_widget.setMaximumHeight(60)
-                    self.tableWidget.setCellWidget(row_index, col_index, text_widget)
-                elif col_index == 4:  # created_at column - format date
-                    formatted_date = self.format_date(data)
-                    item = QTableWidgetItem(formatted_date)
-                    self.tableWidget.setItem(row_index, col_index, item)
-                else:
-                    item = QTableWidgetItem(str(data) if data is not None else "")
-                    self.tableWidget.setItem(row_index, col_index, item)
-            self.tableWidget.setRowHeight(row_index, 60)
-        
-        self.tableWidget.resizeColumnsToContents()
-        self.tableWidget.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+            self.display_notes()
 
     def format_date(self, date_str):
         """Format date string to %d/%m/%Y %H:%M:%S format"""
@@ -338,14 +321,13 @@ class MainWindow(QMainWindow):
     
     def clear_search(self):
         self.search_input.clear()
-        self.load_notes()
+        self.display_notes()
 
     def export_to_csv(self):
         file_path, _ = QFileDialog.getSaveFileName(
             self, "Simpan sebagai CSV", "", "CSV Files (*.csv)"
         )
-        if not file_path:
-            return
+        if not file_path: return
             
         if not file_path.endswith('.csv'):
             file_path += '.csv'
@@ -355,7 +337,18 @@ class MainWindow(QMainWindow):
             with open(file_path, 'w', newline='', encoding='utf-8') as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerow(["ID", "Judul", "Catatan", "Sumber", "Dibuat Pada"])
-                writer.writerows(notes)
+                
+                # Security: Sanitize for CSV Formula Injection
+                sanitized_notes = []
+                for n in notes:
+                    row = list(n)
+                    for i in range(len(row)):
+                        val = str(row[i])
+                        if val.startswith(('=', '+', '-', '@')):
+                            row[i] = "'" + val  # Prefix with single quote to escape
+                    sanitized_notes.append(row)
+                
+                writer.writerows(sanitized_notes)
             QMessageBox.information(self, "Sukses", f"Catatan berhasil diekspor ke {file_path}")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Gagal mengekspor catatan: {str(e)}")
@@ -364,8 +357,7 @@ class MainWindow(QMainWindow):
         file_path, _ = QFileDialog.getSaveFileName(
             self, "Backup Database", "notes_backup.db", "SQLite Database (*.db)"
         )
-        if not file_path:
-            return
+        if not file_path: return
             
         try:
             db_source = self.db.db_name

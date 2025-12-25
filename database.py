@@ -35,8 +35,8 @@ class DatabaseManager:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO notes (title, catatan, sumber_catatan, created_at) VALUES (?, ?, ?, ?)",
-                (title, catatan, sumber_catatan, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                "INSERT INTO notes (title, catatan, sumber_catatan) VALUES (?, ?, ?)",
+                (title, catatan, sumber_catatan)
             )
             conn.commit()
 
@@ -70,5 +70,5 @@ class DatabaseManager:
                 FROM notes 
                 WHERE title LIKE ? OR catatan LIKE ? OR sumber_catatan LIKE ?
                 ORDER BY created_at DESC
-            """, (search_pattern, search_pattern, search_pattern))
+            """, (search_pattern,) * 3)
             return cursor.fetchall()
