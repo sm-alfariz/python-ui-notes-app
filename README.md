@@ -24,15 +24,17 @@ then run the app with `python -m main`
 7. refresh note show list of notes in table with refresh button
 8. support html in catatan field, and you can paste from some web example
 9. export note to csv
-10. backup database Sqlite3 format 
+10. backup database Sqlite3 format
+11. language switcher with ini file as dictionary
+
 ## pyinstaller
 
 if you want to make it standalone app you can use pyinstaller
 make sure you have pyinstaller installed with `pip install pyinstaller`
-then run the app with `pyinstaller --onefile main.py` im use arch linux and build standalone for linux with `pyinstaller --onefile --windowed main.py` if you use windows you can use `pyinstaller --onefile --windowed main.py` and run itu on your windows machine see pyinstaller doc for more info https://pyinstaller.readthedocs.io/en/stable/ and https://pyinstaller.readthedocs.io/en/stable/usage.html for more info about pyinstaller usage  
-
+then run the app with `pyinstaller --onefile main.py` im use arch linux and build standalone for linux with `pyinstaller --onefile --windowed main.py` if you use windows you can use `pyinstaller --onefile --windowed main.py` and run itu on your windows machine see pyinstaller doc for more info <https://pyinstaller.readthedocs.io/en/stable/> and <https://pyinstaller.readthedocs.io/en/stable/usage.html> for more info about pyinstaller usage  
 
 ### TODO
+
 1. add image upload if needed
 2. add lock feature for some screet notes, example like password or screet api key an token
 3. add export and import feature or backup and restore feature
@@ -44,4 +46,4 @@ this app is open source and free to use and modify
 ## author
 
 sm-alfariz
-https://github.com/sm-alfariz
+<https://github.com/sm-alfariz>
