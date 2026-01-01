@@ -3,20 +3,86 @@ import csv
 import shutil
 import os
 import re
+import configparser
 from datetime import datetime
 from PySide6.QtWidgets import (QApplication, QMainWindow, QTableWidget, 
                                QTableWidgetItem, QVBoxLayout, QWidget, QMenu,
                                QPushButton, QHBoxLayout, QDialog, QFormLayout,
                                QLineEdit, QTextEdit, QMessageBox, QHeaderView,
-                               QFileDialog, QLabel)
+                               QFileDialog, QLabel, QComboBox)
 from PySide6.QtGui import (QAction)
 from PySide6.QtCore import Qt
 from database import DatabaseManager
 
+def load_translations():
+    config = configparser.ConfigParser()
+    config_path = os.path.join(os.path.dirname(__file__), 'language.ini')
+    
+    # Default fallback translations if file is missing or keys are missing
+    default_translations = {
+        'en': {
+            'app_title': "CS | Note Everything",
+            'add_note': "Add Note",
+            'edit': "Edit",
+            'delete': "Delete",
+            'detail': "Detail",
+            'refresh': "Refresh",
+            'exit': "Exit",
+            'search': "Search:",
+            'search_placeholder': "Search title, content, or source...",
+            'clear': "Clear",
+            'id': "ID",
+            'title': "Title",
+            'note': "Note",
+            'source': "Source",
+            'date_time': "Date/Time",
+            'file': "&File",
+            'about': "&About",
+            'export_csv': "Export notes to CSV",
+            'backup_db': "Backup Database",
+            'warning': "Warning",
+            'confirm': "Confirmation",
+            'delete_confirm': "Are you sure you want to delete this note?",
+            'empty_warning': "Title and Note cannot be empty!",
+            'select_edit_warning': "Select a note to edit!",
+            'select_delete_warning': "Select a note to delete!",
+            'success': "Success",
+            'export_success': "Notes successfully exported to {}",
+            'backup_success': "Database successfully backed up to {}",
+            'db_not_found': "Database file not found.",
+            'save': "Save",
+            'cancel': "Cancel",
+            'close': "Close",
+            'created_at': "Created At:",
+            'judul_label': "Title:",
+            'catatan_label': "Note:",
+            'sumber_label': "Source:",
+            'about_text': "<u>CS | Note Everything</u>",
+            'about_info': "is Simple note with PyQt6 and Sqlite3",
+            'tooltip_detail': "Double click or click 'Detail' to see full format",
+            'save_csv': "Save as CSV"
+        }
+    }
+    
+    if not os.path.exists(config_path):
+        return default_translations
+        
+    try:
+        config.read(config_path, encoding='utf-8')
+        translations = {}
+        for section in config.sections():
+            translations[section] = dict(config.items(section))
+        return translations if translations else default_translations
+    except Exception:
+        return default_translations
+
+TRANSLATIONS = load_translations()
+
 class NoteDialog(QDialog):
-    def __init__(self, parent=None, note_data=None):
+    def __init__(self, parent=None, note_data=None, lang='en'):
         super().__init__(parent)
-        self.setWindowTitle("Tambah Catatan" if note_data is None else "Ubah Catatan")
+        self.lang = lang
+        self.setWindowTitle(self.t("add_note") if note_data is None else self.t("edit"))
         self.setMinimumWidth(500)
         self.setMinimumHeight(400)
         
@@ -33,20 +99,23 @@ class NoteDialog(QDialog):
             self.catatan_input.setHtml(note_data[2])
             self.sumber_input.setText(note_data[3] if note_data[3] else "")
             
-        layout.addRow("Judul:", self.title_input)
-        layout.addRow("Catatan:", self.catatan_input)
-        layout.addRow("Sumber:", self.sumber_input)
+        layout.addRow(self.t("judul_label"), self.title_input)
+        layout.addRow(self.t("catatan_label"), self.catatan_input)
+        layout.addRow(self.t("sumber_label"), self.sumber_input)
         
         buttons = QHBoxLayout()
-        self.save_button = QPushButton("Simpan")
+        self.save_button = QPushButton(self.t("save"))
         self.save_button.setDefault(True)
         self.save_button.clicked.connect(self.accept)
-        self.cancel_button = QPushButton("Batal")
+        self.cancel_button = QPushButton(self.t("cancel"))
         self.cancel_button.clicked.connect(self.reject)
         
         buttons.addWidget(self.save_button)
         buttons.addWidget(self.cancel_button)
         layout.addRow(buttons)
+
+    def t(self, key):
+        return TRANSLATIONS[self.lang].get(key, key)
 
     def get_data(self):
         return {
@@ -56,9 +125,10 @@ class NoteDialog(QDialog):
         }
 
 class NoteDetailDialog(QDialog):
-    def __init__(self, parent=None, note_data=None):
+    def __init__(self, parent=None, note_data=None, lang='en'):
         super().__init__(parent)
-        self.setWindowTitle("Detail Catatan")
+        self.lang = lang
+        self.setWindowTitle(self.t("detail"))
         self.setMinimumWidth(600)
         self.setMinimumHeight(450)
         
@@ -70,20 +140,20 @@ class NoteDetailDialog(QDialog):
         created_at = note_data[4] if note_data and len(note_data) > 4 else "-"
         created_field = QLineEdit(str(created_at))
         created_field.setReadOnly(True)
-        info_layout.addRow("Dibuat Pada:", created_field)
+        info_layout.addRow(self.t("created_at"), created_field)
         
         title_text = QLineEdit(note_data[1] if note_data and note_data[1] else "-")
         title_text.setReadOnly(True)
-        info_layout.addRow("Judul:", title_text)
+        info_layout.addRow(self.t("judul_label"), title_text)
         
         sumber_text = QLineEdit(note_data[3] if note_data and note_data[3] else "-")
         sumber_text.setReadOnly(True)
-        info_layout.addRow("Sumber:", sumber_text)
+        info_layout.addRow(self.t("sumber_label"), sumber_text)
         
         layout.addLayout(info_layout)
         
         # Catatan content
-        label = QLabel("Catatan:")
+        label = QLabel(self.t("catatan_label"))
         label.setStyleSheet("font-weight: bold; margin-top: 10px;")
         layout.addWidget(label)
         
@@ -93,15 +163,19 @@ class NoteDetailDialog(QDialog):
         layout.addWidget(self.catatan_display)
         
         # Close button
-        close_button = QPushButton("Tutup")
+        close_button = QPushButton(self.t("close"))
         close_button.clicked.connect(self.accept)
         layout.addWidget(close_button)
+
+    def t(self, key):
+        return TRANSLATIONS[self.lang].get(key, key)
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.db = DatabaseManager()
-        self.setWindowTitle("CS | Catat Segala")
+        self.current_lang = 'en'
+        self.setWindowTitle(self.t("app_title"))
         self.resize(900, 600)
     
         self.create_menu_bar()
@@ -112,12 +186,12 @@ class MainWindow(QMainWindow):
 
         # Toolbar layout
         button_layout = QHBoxLayout()
-        self.add_btn = QPushButton("Tambah Catatan")
-        self.edit_btn = QPushButton("Ubah")
-        self.delete_btn = QPushButton("Hapus")
-        self.detail_btn = QPushButton("Detail")
-        self.refresh_btn = QPushButton("Refresh")
-        self.exit_btn = QPushButton("Keluar")
+        self.add_btn = QPushButton(self.t("add_note"))
+        self.edit_btn = QPushButton(self.t("edit"))
+        self.delete_btn = QPushButton(self.t("delete"))
+        self.detail_btn = QPushButton(self.t("detail"))
+        self.refresh_btn = QPushButton(self.t("refresh"))
+        self.exit_btn = QPushButton(self.t("exit"))
         
         self.add_btn.clicked.connect(self.add_note)
         self.edit_btn.clicked.connect(self.edit_note)
@@ -131,6 +205,14 @@ class MainWindow(QMainWindow):
         button_layout.addWidget(self.delete_btn)
         button_layout.addWidget(self.detail_btn)
         button_layout.addStretch()
+
+        # Language Selector
+        self.lang_selector = QComboBox()
+        self.lang_selector.addItem("English", "en")
+        self.lang_selector.addItem("Indonesia", "id")
+        self.lang_selector.currentIndexChanged.connect(self.change_language)
+        button_layout.addWidget(self.lang_selector)
+
         button_layout.addWidget(self.refresh_btn)
         button_layout.addWidget(self.exit_btn)
         
@@ -138,17 +220,17 @@ class MainWindow(QMainWindow):
         
         # Search bar
         search_layout = QHBoxLayout()
-        search_label = QLabel("Cari:")
+        self.search_label = QLabel(self.t("search"))
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Cari judul, isi, atau sumber...")
+        self.search_input.setPlaceholderText(self.t("search_placeholder"))
         self.search_input.returnPressed.connect(self.perform_search)
         
-        self.search_btn = QPushButton("Cari")
+        self.search_btn = QPushButton(self.t("search_btn") if "search_btn" in TRANSLATIONS[self.current_lang] else self.t("search").replace(":", ""))
         self.search_btn.clicked.connect(self.perform_search)
-        self.clear_search_btn = QPushButton("Clear")
+        self.clear_search_btn = QPushButton(self.t("clear"))
         self.clear_search_btn.clicked.connect(self.clear_search)
         
-        search_layout.addWidget(search_label)
+        search_layout.addWidget(self.search_label)
         search_layout.addWidget(self.search_input)
         search_layout.addWidget(self.search_btn)
         search_layout.addWidget(self.clear_search_btn)
@@ -158,7 +240,7 @@ class MainWindow(QMainWindow):
         # Table widget
         self.tableWidget = QTableWidget()
         self.tableWidget.setColumnCount(5)
-        self.tableWidget.setHorizontalHeaderLabels(["ID", "Judul", "Catatan", "Sumber", "Tgl/Jam"])
+        self.retranslate_table_headers()
         self.tableWidget.setColumnHidden(0, True)
         self.tableWidget.setSelectionBehavior(QTableWidget.SelectRows)
         self.tableWidget.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -172,26 +254,60 @@ class MainWindow(QMainWindow):
         
         self.display_notes()
 
-    def create_menu_bar(self):
-        menu_bar = self.menuBar()
-        file_menu = menu_bar.addMenu("&File")
-        about_menu = menu_bar.addMenu("&About")
+    def t(self, key):
+        return TRANSLATIONS[self.current_lang].get(key, key)
+
+    def change_language(self, index):
+        self.current_lang = self.lang_selector.itemData(index)
+        self.retranslate_ui()
+
+    def retranslate_ui(self):
+        self.setWindowTitle(self.t("app_title"))
+        self.add_btn.setText(self.t("add_note"))
+        self.edit_btn.setText(self.t("edit"))
+        self.delete_btn.setText(self.t("delete"))
+        self.detail_btn.setText(self.t("detail"))
+        self.refresh_btn.setText(self.t("refresh"))
+        self.exit_btn.setText(self.t("exit"))
+        self.search_label.setText(self.t("search"))
+        self.search_input.setPlaceholderText(self.t("search_placeholder"))
+        self.search_btn.setText(self.t("search").replace(":", ""))
+        self.clear_search_btn.setText(self.t("clear"))
         
-        about_action = QAction("&About", self)
+        self.retranslate_table_headers()
+        self.create_menu_bar() # Recreate menu bar to update labels
+        self.display_notes() # Refresh table tooltips
+
+    def retranslate_table_headers(self):
+        self.tableWidget.setHorizontalHeaderLabels([
+            self.t("id"), self.t("title"), self.t("note"), self.t("source"), self.t("date_time")
+        ])
+        
+        header = self.tableWidget.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Interactive)
+        header.setSectionResizeMode(2, QHeaderView.Stretch)
+
+    def create_menu_bar(self):
+        self.menuBar().clear()
+        menu_bar = self.menuBar()
+        file_menu = menu_bar.addMenu(self.t("file"))
+        about_menu = menu_bar.addMenu(self.t("about"))
+        
+        about_action = QAction(self.t("about"), self)
         about_action.triggered.connect(self.show_about)
         about_menu.addAction(about_action)
         
-        export_action = QAction("&Export notes to CSV", self)
+        export_action = QAction(self.t("export_csv"), self)
         export_action.triggered.connect(self.export_to_csv)
         file_menu.addAction(export_action)
         
-        backup_action = QAction("&Backup Database", self)
+        backup_action = QAction(self.t("backup_db"), self)
         backup_action.triggered.connect(self.backup_notes)
         file_menu.addAction(backup_action)
         
         file_menu.addSeparator()
         
-        exit_action = QAction("&Exit", self)
+        exit_action = QAction(self.t("exit"), self)
         exit_action.setShortcut("Ctrl+Q") # Add keyboard shortcut for exit
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
@@ -199,8 +315,9 @@ class MainWindow(QMainWindow):
     def show_about(self):
         about_dialog = QMessageBox()
         about_dialog.setIcon(QMessageBox.Information)
-        about_dialog.setText("<u>CS | Catat Segala</u>")
-        about_dialog.setInformativeText("is Simple note with PyQt6 and Sqlite3 this is open source go to github repository <a href='https://github.com/sm-alfariz/python-ui-notes-app'> github link</a> for the code")
+        about_dialog.setWindowTitle(self.t("about"))
+        about_dialog.setText(self.t("about_text"))
+        about_dialog.setInformativeText(self.t("about_info"))
         about_dialog.setStandardButtons(QMessageBox.Close)
         about_dialog.exec_()
         
@@ -226,7 +343,7 @@ class MainWindow(QMainWindow):
             catatan_text = self.strip_html(str(note[2]))
             snippet = (catatan_text[:100] + "...") if len(catatan_text) > 100 else catatan_text
             item_catatan = QTableWidgetItem(snippet)
-            item_catatan.setToolTip("Klik 2x atau klik 'Detail' untuk melihat format lengkap")
+            item_catatan.setToolTip(self.t("tooltip_detail"))
             # Store the original HTML in the item data for retrieval if needed
             item_catatan.setData(Qt.UserRole, note[2])
             self.tableWidget.setItem(row_index, 2, item_catatan)
@@ -257,11 +374,11 @@ class MainWindow(QMainWindow):
         self.display_notes(notes)
 
     def add_note(self):
-        dialog = NoteDialog(self)
+        dialog = NoteDialog(self, lang=self.current_lang)
         if dialog.exec():
             data = dialog.get_data()
             if not data["title"].strip() or self.strip_html(data["catatan"]).strip() == "":
-                QMessageBox.warning(self, "Peringatan", "Judul dan Catatan tidak boleh kosong!")
+                QMessageBox.warning(self, self.t("warning"), self.t("empty_warning"))
                 return
                 
             sumber = data["sumber"].strip() or None
@@ -271,7 +388,7 @@ class MainWindow(QMainWindow):
     def edit_note(self):
         selected_row = self.tableWidget.currentRow()
         if selected_row < 0:
-            QMessageBox.warning(self, "Peringatan", "Pilih catatan yang ingin diubah!")
+            QMessageBox.warning(self, self.t("warning"), self.t("select_edit_warning"))
             return
             
         note_id = int(self.tableWidget.item(selected_row, 0).text())
@@ -281,11 +398,11 @@ class MainWindow(QMainWindow):
         sumber = self.tableWidget.item(selected_row, 3).text()
         if sumber == "-": sumber = ""
         
-        dialog = NoteDialog(self, (note_id, title, catatan_html, sumber))
+        dialog = NoteDialog(self, (note_id, title, catatan_html, sumber), lang=self.current_lang)
         if dialog.exec():
             data = dialog.get_data()
             if not data["title"].strip() or self.strip_html(data["catatan"]).strip() == "":
-                QMessageBox.warning(self, "Peringatan", "Judul dan Catatan tidak boleh kosong!")
+                QMessageBox.warning(self, self.t("warning"), self.t("empty_warning"))
                 return
             
             sumber = data["sumber"].strip() or None
@@ -303,17 +420,17 @@ class MainWindow(QMainWindow):
         sumber = self.tableWidget.item(selected_row, 3).text()
         created_at = self.tableWidget.item(selected_row, 4).text()
         
-        dialog = NoteDetailDialog(self, (note_id, title, catatan_html, sumber, created_at))
+        dialog = NoteDetailDialog(self, (note_id, title, catatan_html, sumber, created_at), lang=self.current_lang)
         dialog.exec()
 
     def delete_note(self):
         selected_row = self.tableWidget.currentRow()
         if selected_row < 0:
-            QMessageBox.warning(self, "Peringatan", "Pilih catatan yang ingin dihapus!")
+            QMessageBox.warning(self, self.t("warning"), self.t("select_delete_warning"))
             return
             
         note_id = int(self.tableWidget.item(selected_row, 0).text())
-        reply = QMessageBox.question(self, "Konfirmasi", "Apakah Anda yakin ingin menghapus catatan ini?",
+        reply = QMessageBox.question(self, self.t("confirm"), self.t("delete_confirm"),
                                    QMessageBox.Yes | QMessageBox.No)
         
         if reply == QMessageBox.Yes:
@@ -339,7 +456,7 @@ class MainWindow(QMainWindow):
 
     def export_to_csv(self):
         file_path, _ = QFileDialog.getSaveFileName(
-            self, "Simpan sebagai CSV", "", "CSV Files (*.csv)"
+            self, self.t("save_csv"), "", "CSV Files (*.csv)"
         )
         if not file_path: return
             
@@ -363,13 +480,13 @@ class MainWindow(QMainWindow):
                     sanitized_notes.append(row)
                 
                 writer.writerows(sanitized_notes)
-            QMessageBox.information(self, "Sukses", f"Catatan berhasil diekspor ke {file_path}")
+            QMessageBox.information(self, self.t("success"), self.t("export_success").format(file_path))
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Gagal mengekspor catatan: {str(e)}")
 
     def backup_notes(self):
         file_path, _ = QFileDialog.getSaveFileName(
-            self, "Backup Database", "notes_backup.db", "SQLite Database (*.db)"
+            self, self.t("backup_db"), "notes_backup.db", "SQLite Database (*.db)"
         )
         if not file_path: return
             
@@ -377,9 +494,9 @@ class MainWindow(QMainWindow):
             db_source = self.db.db_name
             if os.path.exists(db_source):
                 shutil.copy2(db_source, file_path)
-                QMessageBox.information(self, "Sukses", f"Database berhasil di-backup ke {file_path}")
+                QMessageBox.information(self, self.t("success"), self.t("backup_success").format(file_path))
             else:
-                QMessageBox.warning(self, "Peringatan", "File database tidak ditemukan.")
+                QMessageBox.warning(self, self.t("warning"), self.t("db_not_found"))
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Gagal mem-backup database: {str(e)}")
 
