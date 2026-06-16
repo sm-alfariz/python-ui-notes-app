@@ -33,14 +33,21 @@ class DatabaseManager:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS attachment_file (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    catatan_id INTEGER NOT NULL,
+                    notes_id INTEGER NOT NULL,
                     attachment_name TEXT NOT NULL,
                     attachment_tipe_mime TEXT NOT NULL,
                     attachment_blob BLOB NOT NULL,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY(catatan_id) REFERENCES notes(id) ON DELETE CASCADE
+                    FOREIGN KEY(notes_id) REFERENCES notes(id) ON DELETE CASCADE
                 )
             """)
+            
+            # Migrate existing database if it still uses catatan_id
+            cursor.execute("PRAGMA table_info(attachment_file)")
+            columns = [row[1] for row in cursor.fetchall()]
+            if columns and "catatan_id" in columns and "notes_id" not in columns:
+                cursor.execute("ALTER TABLE attachment_file RENAME COLUMN catatan_id TO notes_id")
+                
             conn.commit()
 
     def add_note(self, title, catatan, sumber_catatan=None):
@@ -71,27 +78,27 @@ class DatabaseManager:
     def delete_note(self, note_id):
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM attachment_file WHERE catatan_id = ?", (note_id,))
+            cursor.execute("DELETE FROM attachment_file WHERE notes_id = ?", (note_id,))
             cursor.execute("DELETE FROM notes WHERE id = ?", (note_id,))
             conn.commit()
 
-    def add_attachment(self, catatan_id, filename, mime_type, blob_data):
+    def add_attachment(self, notes_id, filename, mime_type, blob_data):
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                """INSERT INTO attachment_file (catatan_id, attachment_name, attachment_tipe_mime, attachment_blob)
+                """INSERT INTO attachment_file (notes_id, attachment_name, attachment_tipe_mime, attachment_blob)
                    VALUES (?, ?, ?, ?)""",
-                (catatan_id, filename, mime_type, blob_data)
+                (notes_id, filename, mime_type, blob_data)
             )
             conn.commit()
             return cursor.lastrowid
 
-    def get_attachments_by_note_id(self, catatan_id):
+    def get_attachments_by_note_id(self, notes_id):
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT id, catatan_id, attachment_name, attachment_tipe_mime, attachment_blob, created_at FROM attachment_file WHERE catatan_id = ?",
-                (catatan_id,)
+                "SELECT id, notes_id, attachment_name, attachment_tipe_mime, attachment_blob, created_at FROM attachment_file WHERE notes_id = ?",
+                (notes_id,)
             )
             return cursor.fetchall()
 
