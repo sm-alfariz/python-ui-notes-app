@@ -1,4 +1,7 @@
 # Standard Python ignores
+.DS_Store
+.python-version
+
 # Byte-compiled files
 __pycache__/
 *.pyc
