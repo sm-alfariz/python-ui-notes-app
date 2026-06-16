@@ -13,6 +13,27 @@ make sure you have python 3.13 or higher and create virtual environment and inst
 
 then run the app with `python -m main`
 
+## project structure
+
+The project is organized in a modular structure to separate core database operations, translation configurations, custom UI widgets, dialog windows, and the main window UI controller:
+
+```
+python-ui-notes-app/
+├── main.py                     # Entry point (initializes QApplication and displays MainWindow)
+├── database.py                 # Core database manager (DatabaseManager queries)
+├── language.ini                # Translations configuration
+├── requirements.txt            # Project dependencies
+├── Catat-Segala.spec           # PyInstaller spec configuration
+└── src/                        # main source package
+    ├── config.py               # Config & translation dictionary helper
+    ├── widgets/
+    │   └── custom_text_edit.py # Custom QTextEdit widget supporting clipboard image pasting
+    ├── dialogs/
+    │   └── note_dialogs.py     # Note add/edit and detail view dialog classes
+    └── ui/
+        └── main_window.py      # MainWindow UI design and controller class
+```
+
 ## features
 
 1. create note show window dialog for new notes
@@ -26,6 +47,8 @@ then run the app with `python -m main`
 9. export note to csv
 10. backup database Sqlite3 format
 11. language switcher with ini file as dictionary
+12. paginated list loading with "Load More" button to keep performance optimal
+13. text editor support for pasting images directly from the clipboard (embedded as base64 HTML)
 
 ## pyinstaller
 

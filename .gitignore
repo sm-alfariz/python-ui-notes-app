@@ -4,11 +4,13 @@
 
 # Byte-compiled files
 __pycache__/
+main.bin
 *.pyc
 *.pyd
 *.pyo
 *.egg-info/
 .eggs/
+main.dist/
 # Environments
 .venv/
 env/

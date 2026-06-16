@@ -71,3 +71,39 @@ class DatabaseManager:
                 ORDER BY created_at DESC
             """, (search_pattern,) * 3)
             return cursor.fetchall()
+
+    def get_notes_paginated(self, offset=0, limit=20, search_query=None):
+        """Fetch a page of notes with optional search filter."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            if search_query:
+                pattern = f"%{search_query}%"
+                cursor.execute("""
+                    SELECT id, title, catatan, sumber_catatan, created_at
+                    FROM notes
+                    WHERE title LIKE ? OR catatan LIKE ? OR sumber_catatan LIKE ?
+                    ORDER BY created_at DESC
+                    LIMIT ? OFFSET ?
+                """, (pattern, pattern, pattern, limit, offset))
+            else:
+                cursor.execute("""
+                    SELECT id, title, catatan, sumber_catatan, created_at
+                    FROM notes
+                    ORDER BY created_at DESC
+                    LIMIT ? OFFSET ?
+                """, (limit, offset))
+            return cursor.fetchall()
+
+    def get_total_notes_count(self, search_query=None):
+        """Return the total number of notes, with optional search filter."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            if search_query:
+                pattern = f"%{search_query}%"
+                cursor.execute("""
+                    SELECT COUNT(*) FROM notes
+                    WHERE title LIKE ? OR catatan LIKE ? OR sumber_catatan LIKE ?
+                """, (pattern, pattern, pattern))
+            else:
+                cursor.execute("SELECT COUNT(*) FROM notes")
+            return cursor.fetchone()[0]
