@@ -10,8 +10,8 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QTableWidget,
                                QPushButton, QHBoxLayout, QDialog, QFormLayout,
                                QLineEdit, QTextEdit, QMessageBox, QHeaderView,
                                QFileDialog, QLabel, QComboBox)
-from PySide6.QtGui import (QAction)
-from PySide6.QtCore import Qt
+from PySide6.QtGui import (QAction, QImage, QIcon)
+from PySide6.QtCore import Qt, QBuffer, QByteArray, QIODevice
 from database import DatabaseManager
 
 def load_translations():
@@ -77,6 +77,27 @@ def load_translations():
         return default_translations
 
 TRANSLATIONS = load_translations()
+class CustomTextEdit(QTextEdit):
+    def insertFromMimeData(self, source):
+        """
+        Override default paste behavior to handle images from clipboard.
+        """
+        if source.hasImage():
+            image = source.imageData()
+            if isinstance(image, QImage):
+                # Convert image to base64-encoded PNG for embedding
+                ba = QByteArray()
+                buffer = QBuffer(ba)
+                buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+                image.save(buffer, "PNG")
+                base64_data = ba.toBase64().data().decode()
+
+                # Create HTML <img> tag with embedded base64 PNG
+                html_img = f'<img src="data:image/png;base64,{base64_data}">'
+                self.textCursor().insertHtml(html_img)
+                return  # Skip default paste
+        # Fallback to default behavior for text/other formats
+        super().insertFromMimeData(source)
 
 class NoteDialog(QDialog):
     def __init__(self, parent=None, note_data=None, lang='en'):
@@ -89,7 +110,7 @@ class NoteDialog(QDialog):
         layout = QFormLayout(self)
         
         self.title_input = QLineEdit()
-        self.catatan_input = QTextEdit()
+        self.catatan_input = CustomTextEdit()
         self.catatan_input.setAcceptRichText(True)  # Enable HTML support
         self.sumber_input = QLineEdit()
         
@@ -173,6 +194,7 @@ class NoteDetailDialog(QDialog):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.setWindowIcon(QIcon('./assets/logo.ico'))
         self.db = DatabaseManager()
         self.current_lang = 'en'
         self.setWindowTitle(self.t("app_title"))
@@ -319,7 +341,7 @@ class MainWindow(QMainWindow):
         about_dialog.setText(self.t("about_text"))
         about_dialog.setInformativeText(self.t("about_info"))
         about_dialog.setStandardButtons(QMessageBox.Close)
-        about_dialog.exec_()
+        about_dialog.exec()
         
     def display_notes(self, notes=None):
         """Unified method to display notes in the table."""
