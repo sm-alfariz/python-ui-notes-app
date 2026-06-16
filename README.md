@@ -34,6 +34,50 @@ python-ui-notes-app/
         └── main_window.py      # MainWindow UI design and controller class
 ```
 
+## Database Schema & Relations
+
+The application uses SQLite3 to store notes and their associated files. The database consists of two tables with a **one-to-many (1:N)** relationship:
+
+```mermaid
+erDiagram
+    notes ||--o{ attachment_file : "has"
+    notes {
+        int id PK
+        string title
+        string catatan
+        string sumber_catatan
+        datetime created_at
+    }
+    attachment_file {
+        int id PK
+        int catatan_id FK
+        string attachment_name
+        string attachment_tipe_mime
+        blob attachment_blob
+        datetime created_at
+    }
+```
+
+### Tables
+1. **`notes` Table**:
+   - `id` (INTEGER PRIMARY KEY AUTOINCREMENT) - Unique identifier for each note.
+   - `title` (TEXT NOT NULL) - Note title.
+   - `catatan` (TEXT NOT NULL) - Note content (supports HTML/rich text).
+   - `sumber_catatan` (TEXT) - Optional source/reference.
+   - `created_at` (DATETIME DEFAULT CURRENT_TIMESTAMP) - Date/time created.
+
+2. **`attachment_file` Table**:
+   - `id` (INTEGER PRIMARY KEY AUTOINCREMENT) - Unique identifier for each attachment.
+   - `catatan_id` (INTEGER NOT NULL) - Foreign Key linking to `notes(id)`.
+   - `attachment_name` (TEXT NOT NULL) - Name of the attached file.
+   - `attachment_tipe_mime` (TEXT NOT NULL) - File type (MIME Type, e.g., `text/plain`, `image/jpeg`, `application/pdf`).
+   - `attachment_blob` (BLOB NOT NULL) - Binary file data stored directly in the database.
+   - `created_at` (DATETIME DEFAULT CURRENT_TIMESTAMP) - Date/time uploaded.
+
+### Relationships and Integrity
+- **Enforced Foreign Keys**: Every connection dynamically executes `PRAGMA foreign_keys = ON;` to maintain relational integrity.
+- **Cascade Deletion (`ON DELETE CASCADE`)**: Deleting a note automatically cascades to delete all related records in `attachment_file`, preventing orphaned files and database bloat.
+
 ## features
 
 1. create note show window dialog for new notes
@@ -49,6 +93,7 @@ python-ui-notes-app/
 11. language switcher with ini file as dictionary
 12. paginated list loading with "Load More" button to keep performance optimal
 13. text editor support for pasting images directly from the clipboard (embedded as base64 HTML)
+14. support for note attachments (add, delete, and download any file type on add/edit and detail windows)
 
 ## pyinstaller
 
