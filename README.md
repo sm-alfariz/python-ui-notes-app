@@ -89,7 +89,7 @@ erDiagram
     }
     attachment_file {
         int id PK
-        int catatan_id FK
+        int notes_id FK
         string attachment_name
         string attachment_tipe_mime
         blob attachment_blob
@@ -108,7 +108,7 @@ erDiagram
 
 2. **`attachment_file` Table**:
    - `id` (INTEGER PRIMARY KEY AUTOINCREMENT) - Unique identifier for each attachment.
-   - `catatan_id` (INTEGER NOT NULL) - Foreign Key linking to `notes(id)`.
+   - `notes_id` (INTEGER NOT NULL) - Foreign Key linking to `notes(id)`.
    - `attachment_name` (TEXT NOT NULL) - Name of the attached file.
    - `attachment_tipe_mime` (TEXT NOT NULL) - File type (MIME Type, e.g., `text/plain`, `image/jpeg`, `application/pdf`).
    - `attachment_blob` (BLOB NOT NULL) - Binary file data stored directly in the database.
