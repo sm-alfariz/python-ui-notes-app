@@ -71,6 +71,11 @@ def load_translations():
             "about_info": "is Simple note with PyQt6 and Sqlite3",
             "tooltip_detail": "Double click or click 'Detail' to see full format",
             "save_csv": "Save as CSV",
+            "attachments": "Attachments:",
+            "add_attachment": "Add Attachment...",
+            "remove_attachment": "Remove Selected",
+            "save_attachment": "Save Attachment",
+            "no_attachments": "No attachments",
         }
     }
 
