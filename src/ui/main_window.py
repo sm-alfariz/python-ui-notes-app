@@ -319,7 +319,12 @@ class MainWindow(QMainWindow):
                 return
 
             sumber = data["sumber"].strip() or None
-            self.db.add_note(data["title"], data["catatan"], sumber)
+            note_id = self.db.add_note(data["title"], data["catatan"], sumber)
+            
+            # Save attachments
+            for att in data["attachments"]:
+                self.db.add_attachment(note_id, att["name"], att["mime"], att["blob"])
+                
             self.display_notes()
 
     def edit_note(self):
@@ -350,6 +355,22 @@ class MainWindow(QMainWindow):
 
             sumber = data["sumber"].strip() or None
             self.db.update_note(note_id, data["title"], data["catatan"], sumber)
+            
+            # Sync attachments
+            db_atts = self.db.get_attachments_by_note_id(note_id)
+            db_att_ids = {att[0] for att in db_atts}
+            current_att_ids = {att["id"] for att in data["attachments"] if att["id"] is not None}
+            
+            # Delete attachments that were in DB but are not in current_attachments anymore
+            for att in db_atts:
+                if att[0] not in current_att_ids:
+                    self.db.delete_attachment(att[0])
+            
+            # Add new attachments (id is None)
+            for att in data["attachments"]:
+                if att["id"] is None:
+                    self.db.add_attachment(note_id, att["name"], att["mime"], att["blob"])
+
             self.display_notes()
 
     def view_detail(self):
