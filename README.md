@@ -16,31 +16,38 @@ then run the app with `python -m main`
 ## running tests
 
 The application contains two test suites:
+
 - `test_db.py`: Tests the SQLite database CRUD queries and cascading deletions.
 - `test_app.py`: Tests database integration, config translation dictionaries, and PySide6 Qt UI dialogs (NoteDialog, NoteDetailDialog, MainWindow).
 
 ### Headless Execution (Recommended)
+
 Because PySide6 Qt widgets require a graphic display system by default, you can configure them to run headlessly (without GUI windows popping up) using the `offscreen` platform plugin:
 
 #### Linux & macOS
+
 ```bash
 QT_QPA_PLATFORM=offscreen python3 test_app.py
 ```
 
 #### Windows (Command Prompt)
+
 ```cmd
 set QT_QPA_PLATFORM=offscreen
 python test_app.py
 ```
 
 #### Windows (PowerShell)
+
 ```powershell
 $env:QT_QPA_PLATFORM="offscreen"
 python test_app.py
 ```
 
 ### Visual Execution
+
 If you are in a GUI-enabled desktop environment and want to watch the windows dynamically initialize and close during test execution, you can run:
+
 ```bash
 python3 test_app.py
 ```
@@ -91,6 +98,7 @@ erDiagram
 ```
 
 ### Tables
+
 1. **`notes` Table**:
    - `id` (INTEGER PRIMARY KEY AUTOINCREMENT) - Unique identifier for each note.
    - `title` (TEXT NOT NULL) - Note title.
@@ -107,6 +115,7 @@ erDiagram
    - `created_at` (DATETIME DEFAULT CURRENT_TIMESTAMP) - Date/time uploaded.
 
 ### Relationships and Integrity
+
 - **Enforced Foreign Keys**: Every connection dynamically executes `PRAGMA foreign_keys = ON;` to maintain relational integrity.
 - **Cascade Deletion (`ON DELETE CASCADE`)**: Deleting a note automatically cascades to delete all related records in `attachment_file`, preventing orphaned files and database bloat.
 
@@ -135,9 +144,9 @@ then run the app with `pyinstaller --onefile main.py` im use arch linux and buil
 
 ### TODO
 
-1. add image upload if needed
+1. ~~add image upload if needed~~
 2. add lock feature for some screet notes, example like password or screet api key an token
-3. add export and import feature or backup and restore feature
+3. ~~add export and import feature or backup and restore feature~~
 
 ## license
 
