@@ -13,6 +13,38 @@ make sure you have python 3.13 or higher and create virtual environment and inst
 
 then run the app with `python -m main`
 
+## running tests
+
+The application contains two test suites:
+- `test_db.py`: Tests the SQLite database CRUD queries and cascading deletions.
+- `test_app.py`: Tests database integration, config translation dictionaries, and PySide6 Qt UI dialogs (NoteDialog, NoteDetailDialog, MainWindow).
+
+### Headless Execution (Recommended)
+Because PySide6 Qt widgets require a graphic display system by default, you can configure them to run headlessly (without GUI windows popping up) using the `offscreen` platform plugin:
+
+#### Linux & macOS
+```bash
+QT_QPA_PLATFORM=offscreen python3 test_app.py
+```
+
+#### Windows (Command Prompt)
+```cmd
+set QT_QPA_PLATFORM=offscreen
+python test_app.py
+```
+
+#### Windows (PowerShell)
+```powershell
+$env:QT_QPA_PLATFORM="offscreen"
+python test_app.py
+```
+
+### Visual Execution
+If you are in a GUI-enabled desktop environment and want to watch the windows dynamically initialize and close during test execution, you can run:
+```bash
+python3 test_app.py
+```
+
 ## project structure
 
 The project is organized in a modular structure to separate core database operations, translation configurations, custom UI widgets, dialog windows, and the main window UI controller:
