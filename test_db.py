@@ -37,12 +37,29 @@ def test_db():
     assert updated_notes[0][1] == "New Title"
     print("Update tests passed!")
     
-    # Test Delete
-    print("Testing delete_note...")
-    db.delete_note(notes[0][0])
+    # Test Attachments
+    print("Testing attachments...")
+    note_id = updated_notes[0][0]
+    att_id = db.add_attachment(note_id, "test_file.txt", "text/plain", b"Hello SQLite attachments!")
+    
+    atts = db.get_attachments_by_note_id(note_id)
+    assert len(atts) == 1
+    assert atts[0][2] == "test_file.txt"
+    assert atts[0][3] == "text/plain"
+    assert atts[0][4] == b"Hello SQLite attachments!"
+    
+    print("Attachment retrieval passed!")
+    
+    # Test Delete Note Cascading
+    print("Testing delete_note and cascading attachments...")
+    db.delete_note(note_id)
     final_notes = db.get_all_notes()
     assert len(final_notes) == 0
-    print("Delete tests passed!")
+    
+    # Verify attachment is deleted automatically
+    remaining_atts = db.get_attachments_by_note_id(note_id)
+    assert len(remaining_atts) == 0
+    print("Cascade Delete tests passed!")
     
     # Cleanup
     if os.path.exists(f".catat-segala/{db_test_name}"):
