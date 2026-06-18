@@ -3,7 +3,8 @@
 this app inspired from my need for quick save note and search note
 
 ![Alt text](screen-shoots/sc-01.png "Optional Title Text")
-![Alt text](screen-shoots/sc-02.png "Optional Title Text")
+![Alt text](screen-shoots/sc-02.png "Screen Shoot 2")
+![Alt text](screen-shoots/sc-03.png "Screen Shoot 3")
 
 this app use sqlite3 as database for easy to stand alone app
 
