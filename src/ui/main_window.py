@@ -186,8 +186,54 @@ class MainWindow(QMainWindow):
         self.menuBar().clear()
         menu_bar = self.menuBar()
         file_menu = menu_bar.addMenu(self.t("file"))
-        about_menu = menu_bar.addMenu(self.t("about"))
 
+        view_menu = menu_bar.addMenu(self.t("view"))
+        theme_menu = view_menu.addMenu(self.t("theme"))
+        
+        from PySide6.QtGui import QActionGroup
+        import sys
+        self.theme_group = QActionGroup(self)
+        self.theme_group.setExclusive(True)
+        
+        # Handle PyInstaller compilation with _MEIPASS
+        # __file__ is in src/ui/ so we need to go up 3 levels to reach the project root
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        base_dir = getattr(sys, '_MEIPASS', project_root)
+        source_themes_dir = os.path.join(base_dir, "src", "themes")
+        
+        target_themes_dir = os.path.join(".catat-segala", "themes")
+        if not os.path.exists(target_themes_dir):
+            try:
+                os.makedirs(target_themes_dir)
+            except Exception:
+                pass
+                
+        # Copy built-in themes to .catat-segala/themes if they are not there
+        if os.path.exists(source_themes_dir) and os.path.exists(target_themes_dir):
+            for file_name in os.listdir(source_themes_dir):
+                if file_name.endswith(".qss"):
+                    src_file = os.path.join(source_themes_dir, file_name)
+                    tgt_file = os.path.join(target_themes_dir, file_name)
+                    if not os.path.exists(tgt_file):
+                        try:
+                            shutil.copy2(src_file, tgt_file)
+                        except Exception:
+                            pass
+                            
+        themes_dir = target_themes_dir
+        
+        if os.path.exists(themes_dir):
+            for file_name in sorted(os.listdir(themes_dir)):
+                if file_name.endswith(".qss"):
+                    theme_name = file_name.replace(".qss", "").replace("_", " ").title()
+                    action = QAction(theme_name, self)
+                    action.setCheckable(True)
+                    action.setData(os.path.join(themes_dir, file_name))
+                    action.triggered.connect(self.change_theme)
+                    self.theme_group.addAction(action)
+                    theme_menu.addAction(action)
+
+        about_menu = menu_bar.addMenu(self.t("about"))
         about_action = QAction(self.t("about"), self)
         about_action.triggered.connect(self.show_about)
         about_menu.addAction(about_action)
@@ -206,6 +252,21 @@ class MainWindow(QMainWindow):
         exit_action.setShortcut("Ctrl+Q")  # Add keyboard shortcut for exit
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
+
+    def change_theme(self):
+        action = self.sender()
+        if action:
+            qss_file = action.data()
+            try:
+                from PySide6.QtWidgets import QApplication
+                app = QApplication.instance()
+                if app and qss_file and os.path.exists(qss_file):
+                    with open(qss_file, "r") as f:
+                        app.setStyleSheet(f.read())
+                elif app:
+                    app.setStyleSheet("")
+            except Exception as e:
+                print(f"Failed to load theme: {e}")
 
     def show_about(self):
         about_dialog = QMessageBox()

@@ -136,12 +136,26 @@ erDiagram
 12. paginated list loading with "Load More" button to keep performance optimal
 13. text editor support for pasting images directly from the clipboard (embedded as base64 HTML)
 14. support for note attachments (add, delete, and download any file type on add/edit and detail windows)
+15. dynamic UI themes support from `.qss` style files in the `src/themes` directory
 
 ## pyinstaller
 
 if you want to make it standalone app you can use pyinstaller
 make sure you have pyinstaller installed with `pip install pyinstaller`
-then run the app with `pyinstaller --onefile main.py` im use arch linux and build standalone for linux with `pyinstaller --onefile --windowed main.py` if you use windows you can use `pyinstaller --onefile --windowed main.py` and run itu on your windows machine see pyinstaller doc for more info <https://pyinstaller.readthedocs.io/en/stable/> and <https://pyinstaller.readthedocs.io/en/stable/usage.html> for more info about pyinstaller usage  
+
+To compile the application along with the dynamic UI themes correctly, you must include the `src/themes` directory using the `--add-data` flag:
+
+**Linux / macOS:**
+```bash
+pyinstaller --onefile --windowed --add-data "src/themes:src/themes" main.py
+```
+
+**Windows:**
+```cmd
+pyinstaller --onefile --windowed --add-data "src/themes;src/themes" main.py
+```
+
+see pyinstaller doc for more info <https://pyinstaller.readthedocs.io/en/stable/> and <https://pyinstaller.readthedocs.io/en/stable/usage.html> for more info about pyinstaller usage  
 
 ### TODO
 

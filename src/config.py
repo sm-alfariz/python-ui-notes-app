@@ -76,6 +76,11 @@ def load_translations():
             "remove_attachment": "Remove Selected",
             "save_attachment": "Save Attachment",
             "no_attachments": "No attachments",
+            "view": "&View",
+            "Theme" : "Theme",
+            "default" : "Default",
+            "facebook_dark" : "Facebook Dark",
+            "facebook_light" : "Facebook Light"
         }
     }
 
