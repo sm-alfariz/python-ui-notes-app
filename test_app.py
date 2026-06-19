@@ -105,6 +105,12 @@ class TestNoteDialog(unittest.TestCase):
 
 
 class TestMainWindow(unittest.TestCase):
+    def setUp(self):
+        """Reset QSettings to avoid persisted language affecting assertions."""
+        from PySide6.QtCore import QSettings
+        settings = QSettings("CatatSegala", "python-ui-notes-app")
+        settings.clear()
+
     def test_main_window_init(self):
         window = MainWindow()
         self.assertEqual(window.windowTitle(), t("en", "app_title"))
