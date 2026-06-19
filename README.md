@@ -2,8 +2,6 @@
 
 this app inspired from my need for quick save note and search note
 
-![Alt text](screen-shoots/sc-01.png "Optional Title Text")
-![Alt text](screen-shoots/sc-02.png "Screen Shoot 2")
 ![Alt text](screen-shoots/sc-03.png "Screen Shoot 3")
 
 this app use sqlite3 as database for easy to stand alone app
@@ -13,6 +11,17 @@ this app use sqlite3 as database for easy to stand alone app
 make sure you have python 3.13 or higher and create virtual environment and install requirements with `pip install -r requirements.txt`
 
 then run the app with `python -m main`
+
+![Screenshot 1](screen-shoots/sc-01.png)
+![Screenshot 2](screen-shoots/sc-02.png)
+
+## Screenshots
+
+| Screenshot | Description |
+|-----------|-------------|
+| ![Screenshot 4](screen-shoots/sc-04.png) | Main interface showing the notes table with pagination and language selector. Users can browse notes with the "Load More" button to fetch additional records. The top toolbar includes add, edit, delete, detail, and refresh buttons for note management. |
+| ![Screenshot 5](screen-shoots/sc-05.png) | Theme selection menu from the View menu. The application supports multiple theme styles that can be customized. Once selected, the chosen theme is persisted in QSettings and automatically applied on the next app launch. |
+| ![Screenshot 6](screen-shoots/sc-06.png) | Add/Edit note dialog with rich text editor. Users can enter a note title, compose notes with HTML formatting support, add a source reference, and attach files. The dialog integrates with the custom QTextEdit widget that supports clipboard image pasting. |
 
 ## running tests
 
