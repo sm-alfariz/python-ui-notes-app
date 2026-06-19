@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QLabel,
     QComboBox,
+    QLineEdit,
 )
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtCore import Qt, QSettings
@@ -99,17 +100,12 @@ class MainWindow(QMainWindow):
         # Search bar
         search_layout = QHBoxLayout()
         self.search_label = QLabel(self.t("search"))
-        self.search_input = QLineEdit_if_used = None
-        # Use QLineEdit
-        from PySide6.QtWidgets import QLineEdit
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText(self.t("search_placeholder"))
         self.search_input.returnPressed.connect(self.perform_search)
 
         self.search_btn = QPushButton(
-            self.t("search_btn")
-            if "search_btn" in TRANSLATIONS[self.current_lang]
-            else self.t("search").replace(":", "")
+            self.t("search").replace(":", "")
         )
         self.search_btn.clicked.connect(self.perform_search)
         self.clear_search_btn = QPushButton(self.t("clear"))
