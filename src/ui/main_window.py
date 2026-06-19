@@ -3,6 +3,7 @@ import shutil
 import os
 import re
 from datetime import datetime
+from pathlib import Path
 from PySide6.QtWidgets import (
     QMainWindow,
     QTableWidget,
@@ -30,7 +31,8 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowIcon(QIcon("./assets/logo.ico"))
+        icon_path = Path(__file__).resolve().parent.parent.parent / "assets" / "logo.png"
+        self.setWindowIcon(QIcon(str(icon_path)))
         self.db = DatabaseManager()
         self.current_lang = "en"
         self.setWindowTitle(self.t("app_title"))
