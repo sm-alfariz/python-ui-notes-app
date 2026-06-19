@@ -146,12 +146,16 @@ class NoteDialog(QDialog):
         if not selected_items:
             QMessageBox.warning(self, self.t("warning"), self.t("select_delete_warning"))
             return
-        
-        for item in selected_items:
-            row = self.attachments_list.row(item)
+
+        # Get rows to remove, sort in reverse to avoid index shifting
+        rows_to_remove = sorted(
+            [self.attachments_list.row(item) for item in selected_items],
+            reverse=True
+        )
+        for row in rows_to_remove:
             if 0 <= row < len(self.current_attachments):
                 self.current_attachments.pop(row)
-        
+
         self.update_attachments_list()
 
     def update_attachments_list(self):
