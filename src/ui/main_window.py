@@ -18,8 +18,7 @@ from PySide6.QtWidgets import (
     QComboBox,
 )
 from PySide6.QtGui import QAction, QIcon
-from PySide6.QtCore import Qt
-
+from PySide6.QtCore import Qt, QSettings
 from database import DatabaseManager
 from src.dialogs.note_dialogs import NoteDialog, NoteDetailDialog
 from src.config import t, TRANSLATIONS
@@ -75,6 +74,19 @@ class MainWindow(QMainWindow):
         self.lang_selector.addItem("English", "en")
         self.lang_selector.addItem("Indonesia", "id")
         self.lang_selector.currentIndexChanged.connect(self.change_language)
+        # Load saved language from QSettings (if available)
+        try:
+            saved_lang = self.settings.value("language", "")
+            if saved_lang:
+                # Prevent triggering change_language before UI fully built
+                self.lang_selector.blockSignals(True)
+                for i in range(self.lang_selector.count()):
+                    if self.lang_selector.itemData(i) == saved_lang:
+                        self.lang_selector.setCurrentIndex(i)
+                        break
+                self.lang_selector.blockSignals(False)
+        except Exception:
+            pass
         button_layout.addWidget(self.lang_selector)
 
         button_layout.addWidget(self.refresh_btn)
@@ -141,6 +153,16 @@ class MainWindow(QMainWindow):
 
         main_layout.addLayout(pagination_layout)
 
+        # Apply saved language now that UI widgets exist
+        try:
+            saved_lang = self.settings.value("language", "")
+            if saved_lang:
+                # update current_lang and retranslate UI
+                self.current_lang = saved_lang
+                self.retranslate_ui()
+        except Exception:
+            pass
+
         self.display_notes()
 
     def t(self, key):
@@ -148,7 +170,17 @@ class MainWindow(QMainWindow):
 
     def change_language(self, index):
         self.current_lang = self.lang_selector.itemData(index)
-        self.retranslate_ui()
+        # Only retranslate if UI widgets have been created
+        try:
+            if hasattr(self, "search_label"):
+                self.retranslate_ui()
+        except Exception:
+            pass
+        # Persist language selection
+        try:
+            self.settings.setValue("language", self.current_lang)
+        except Exception:
+            pass
 
     def retranslate_ui(self):
         self.setWindowTitle(self.t("app_title"))
@@ -194,6 +226,9 @@ class MainWindow(QMainWindow):
         import sys
         self.theme_group = QActionGroup(self)
         self.theme_group.setExclusive(True)
+        # QSettings to persist theme selection
+        self.settings = QSettings("CatatSegala", "python-ui-notes-app")
+        saved_theme = self.settings.value("theme", "")
         
         # Handle PyInstaller compilation with _MEIPASS
         # __file__ is in src/ui/ so we need to go up 3 levels to reach the project root
@@ -228,10 +263,22 @@ class MainWindow(QMainWindow):
                     theme_name = file_name.replace(".qss", "").replace("_", " ").title()
                     action = QAction(theme_name, self)
                     action.setCheckable(True)
-                    action.setData(os.path.join(themes_dir, file_name))
+                    qss_path = os.path.join(themes_dir, file_name)
+                    action.setData(qss_path)
                     action.triggered.connect(self.change_theme)
                     self.theme_group.addAction(action)
                     theme_menu.addAction(action)
+                    # If this theme matches saved setting, check and apply it
+                    try:
+                        if saved_theme and os.path.basename(qss_path) == saved_theme:
+                            action.setChecked(True)
+                            from PySide6.QtWidgets import QApplication
+                            app = QApplication.instance()
+                            if app and os.path.exists(qss_path):
+                                with open(qss_path, "r", encoding="utf-8") as f:
+                                    app.setStyleSheet(f.read())
+                    except Exception:
+                        pass
 
         about_menu = menu_bar.addMenu(self.t("about"))
         about_action = QAction(self.t("about"), self)
@@ -261,8 +308,13 @@ class MainWindow(QMainWindow):
                 from PySide6.QtWidgets import QApplication
                 app = QApplication.instance()
                 if app and qss_file and os.path.exists(qss_file):
-                    with open(qss_file, "r") as f:
+                    with open(qss_file, "r", encoding="utf-8") as f:
                         app.setStyleSheet(f.read())
+                    # Persist selected theme filename
+                    try:
+                        self.settings.setValue("theme", os.path.basename(qss_file))
+                    except Exception:
+                        pass
                 elif app:
                     app.setStyleSheet("")
             except Exception as e:
