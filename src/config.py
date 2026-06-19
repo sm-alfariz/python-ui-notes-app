@@ -68,7 +68,7 @@ def load_translations():
             "catatan_label": "Note:",
             "sumber_label": "Source:",
             "about_text": "<u>CS | Note Everything</u>",
-            "about_info": "is Simple note with PyQt6 and Sqlite3",
+            "about_info": "is Simple note with PySide6 and Sqlite3",
             "tooltip_detail": "Double click or click 'Detail' to see full format",
             "save_csv": "Save as CSV",
             "attachments": "Attachments:",
