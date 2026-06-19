@@ -1,5 +1,6 @@
 import sqlite3
 import os
+import contextlib
 
 class DatabaseManager:
     def __init__(self, db_name="notes.db"):
@@ -12,13 +13,22 @@ class DatabaseManager:
         self.db_name = database_path
         self.init_db()
 
-    def get_connection(self):
+    @contextlib.contextmanager
+    def _connect(self):
+        """Context manager that opens a connection, commits on success, and always closes."""
         conn = sqlite3.connect(self.db_name)
         conn.execute("PRAGMA foreign_keys = ON")
-        return conn
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
 
     def init_db(self):
-        with self.get_connection() as conn:
+        with self._connect() as conn:
             cursor = conn.cursor()
             # Create table only if it doesn't exist (preserves existing data)
             cursor.execute("""
@@ -41,60 +51,54 @@ class DatabaseManager:
                     FOREIGN KEY(notes_id) REFERENCES notes(id) ON DELETE CASCADE
                 )
             """)
-            
+
             # Migrate existing database if it still uses catatan_id
             cursor.execute("PRAGMA table_info(attachment_file)")
             columns = [row[1] for row in cursor.fetchall()]
             if columns and "catatan_id" in columns and "notes_id" not in columns:
                 cursor.execute("ALTER TABLE attachment_file RENAME COLUMN catatan_id TO notes_id")
-                
-            conn.commit()
 
     def add_note(self, title, catatan, sumber_catatan=None):
-        with self.get_connection() as conn:
+        with self._connect() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 "INSERT INTO notes (title, catatan, sumber_catatan) VALUES (?, ?, ?)",
                 (title, catatan, sumber_catatan)
             )
-            conn.commit()
             return cursor.lastrowid
 
     def get_all_notes(self):
-        with self.get_connection() as conn:
+        with self._connect() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT id, title, catatan, sumber_catatan, created_at FROM notes ORDER BY created_at DESC")
             return cursor.fetchall()
 
     def update_note(self, note_id, title, catatan, sumber_catatan=None):
-        with self.get_connection() as conn:
+        with self._connect() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 "UPDATE notes SET title = ?, catatan = ?, sumber_catatan = ? WHERE id = ?",
                 (title, catatan, sumber_catatan, note_id)
             )
-            conn.commit()
 
     def delete_note(self, note_id):
-        with self.get_connection() as conn:
+        with self._connect() as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM attachment_file WHERE notes_id = ?", (note_id,))
             cursor.execute("DELETE FROM notes WHERE id = ?", (note_id,))
-            conn.commit()
 
     def add_attachment(self, notes_id, filename, mime_type, blob_data):
-        with self.get_connection() as conn:
+        with self._connect() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """INSERT INTO attachment_file (notes_id, attachment_name, attachment_tipe_mime, attachment_blob)
                    VALUES (?, ?, ?, ?)""",
                 (notes_id, filename, mime_type, blob_data)
             )
-            conn.commit()
             return cursor.lastrowid
 
     def get_attachments_by_note_id(self, notes_id):
-        with self.get_connection() as conn:
+        with self._connect() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT id, notes_id, attachment_name, attachment_tipe_mime, attachment_blob, created_at FROM attachment_file WHERE notes_id = ?",
@@ -103,18 +107,17 @@ class DatabaseManager:
             return cursor.fetchall()
 
     def delete_attachment(self, attachment_id):
-        with self.get_connection() as conn:
+        with self._connect() as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM attachment_file WHERE id = ?", (attachment_id,))
-            conn.commit()
 
     def search_notes(self, query):
-        with self.get_connection() as conn:
+        with self._connect() as conn:
             cursor = conn.cursor()
             search_pattern = f"%{query}%"
             cursor.execute("""
-                SELECT id, title, catatan, sumber_catatan, created_at 
-                FROM notes 
+                SELECT id, title, catatan, sumber_catatan, created_at
+                FROM notes
                 WHERE title LIKE ? OR catatan LIKE ? OR sumber_catatan LIKE ?
                 ORDER BY created_at DESC
             """, (search_pattern,) * 3)
@@ -122,7 +125,7 @@ class DatabaseManager:
 
     def get_notes_paginated(self, offset=0, limit=20, search_query=None):
         """Fetch a page of notes with optional search filter."""
-        with self.get_connection() as conn:
+        with self._connect() as conn:
             cursor = conn.cursor()
             if search_query:
                 pattern = f"%{search_query}%"
@@ -144,7 +147,7 @@ class DatabaseManager:
 
     def get_total_notes_count(self, search_query=None):
         """Return the total number of notes, with optional search filter."""
-        with self.get_connection() as conn:
+        with self._connect() as conn:
             cursor = conn.cursor()
             if search_query:
                 pattern = f"%{search_query}%"
