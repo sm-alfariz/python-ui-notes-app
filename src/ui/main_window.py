@@ -18,6 +18,9 @@ from PySide6.QtWidgets import (
     QLabel,
     QComboBox,
     QLineEdit,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
+    QStyle,
 )
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtCore import Qt, QSettings
@@ -26,7 +29,68 @@ from src.dialogs.note_dialogs import NoteDialog, NoteDetailDialog
 from src.config import t, TRANSLATIONS
 
 
+class HTMLDelegate(QStyledItemDelegate):
+    """Delegate to render HTML content in table cells using QTextDocument."""
+
+    def paint(self, painter, option, index):
+        from PySide6.QtGui import QTextDocument
+
+        # Prefer UserRole+1 (snippet HTML), fall back to display text
+        html_content = index.data(Qt.UserRole + 1) or index.data(Qt.DisplayRole)
+
+        if not html_content:
+            super().paint(painter, option, index)
+            return
+
+        doc = QTextDocument()
+        doc.setHtml(str(html_content))
+
+        painter.save()
+
+        # Draw selection highlight
+        if option.state & QStyle.State_Selected:
+            painter.fillRect(option.rect, option.palette.highlight())
+
+        # Render document clipped to cell
+        painter.translate(option.rect.topLeft())
+        clip = option.rect.translated(-option.rect.topLeft())
+        painter.setClipRect(clip)
+        doc.setTextWidth(clip.width())
+        doc.drawContents(painter)
+
+        painter.restore()
+
+    def sizeHint(self, option, index):
+        from PySide6.QtGui import QTextDocument
+
+        html_content = index.data(Qt.UserRole + 1) or index.data(Qt.DisplayRole)
+        if not html_content:
+            return super().sizeHint(option, index)
+
+        doc = QTextDocument()
+        doc.setHtml(str(html_content))
+        doc.setTextWidth(option.rect.width())
+        return doc.size().toSize()
+
+
 class MainWindow(QMainWindow):
+    """Main application window for the note-taking application.
+
+    Provides the primary user interface for managing notes, including
+    creating, editing, deleting, searching, and viewing note details.
+    Supports paginated note display, internationalization (i18n),
+    theme switching, CSV export, and database backup functionality.
+
+    Attributes:
+        PAGE_SIZE (int): Number of notes displayed per page. Defaults to 20.
+        db (DatabaseManager): Instance of the database manager for note operations.
+        current_lang (str): Current language code (e.g., 'en', 'id').
+        tableWidget (QTableWidget): The table widget displaying note entries.
+        _current_offset (int): Current pagination offset for note loading.
+        _current_search (str or None): Current search filter query, or None for all notes.
+        _total_notes (int): Total number of notes matching the current filter.
+        settings (QSettings): Persistent settings for theme and language preferences.
+    """    
     # Pagination constants
     PAGE_SIZE = 20
 
@@ -126,6 +190,9 @@ class MainWindow(QMainWindow):
         self.tableWidget.setSelectionBehavior(QTableWidget.SelectRows)
         self.tableWidget.setEditTriggers(QTableWidget.NoEditTriggers)
         self.tableWidget.doubleClicked.connect(self.view_detail)
+
+        # Use HTML delegate for catatan column (col 2)
+        self.tableWidget.setItemDelegateForColumn(2, HTMLDelegate(self.tableWidget))
 
         header = self.tableWidget.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Interactive)
@@ -358,16 +425,21 @@ class MainWindow(QMainWindow):
             # Title
             self.tableWidget.setItem(row_index, 1, QTableWidgetItem(str(note[1])))
 
-            # Catatan snippet – strip HTML for performance
+            # Catatan snippet – show 3 words with HTML formatting
             catatan_text = self.strip_html(str(note[2]))
-            snippet = (
-                (catatan_text[:100] + "...")
-                if len(catatan_text) > 100
-                else catatan_text
-            )
-            item_catatan = QTableWidgetItem(snippet)
+            words = catatan_text.split()
+            if len(words) > 3:
+                snippet = " ".join(words[:3]) + "..."
+            else:
+                snippet = catatan_text
+
+            # Build HTML snippet preserving formatting from original content
+            html_snippet = self._build_snippet_html(note[2], snippet)
+            item_catatan = QTableWidgetItem()
             item_catatan.setToolTip(self.t("tooltip_detail"))
-            item_catatan.setData(Qt.UserRole, note[2])
+            item_catatan.setData(Qt.DisplayRole, snippet)
+            item_catatan.setData(Qt.UserRole, note[2])  # original full HTML for edit/detail
+            item_catatan.setData(Qt.UserRole + 1, html_snippet)  # formatted snippet for display
             self.tableWidget.setItem(row_index, 2, item_catatan)
 
             # Sumber
@@ -403,15 +475,109 @@ class MainWindow(QMainWindow):
         """Simple utility to strip HTML tags for text preview."""
         if not html_str:
             return ""
-        # Remove tags and replace some entities
+        # Remove <style> and <script> blocks first (content + tags)
+        text = re.sub(r"<style[^>]*>.*?</style>", "", html_str, flags=re.DOTALL | re.IGNORECASE)
+        text = re.sub(r"<script[^>]*>.*?</script>", "", text, flags=re.DOTALL | re.IGNORECASE)
+        # Remove remaining tags and replace some entities
         clean = re.compile("<.*?>")
-        text = re.sub(clean, "", html_str)
+        text = re.sub(clean, "", text)
         return (
             text.replace("&nbsp;", " ")
             .replace("&lt;", "<")
             .replace("&gt;", ">")
             .replace("&amp;", "&")
         )
+
+    def _build_snippet_html(self, original_html, plain_snippet):
+        """Build a safe HTML snippet for table display.
+
+        Takes the first ~150 chars of the original HTML after removing
+        <style>, <script>, <head>, <html>, <body> wrappers, then lets
+        QTextDocument render it with inline formatting preserved.
+        """
+        if not original_html:
+            return plain_snippet
+
+        import re as _re
+
+        try:
+            # Remove <style>, <script>, <head> blocks entirely
+            cleaned = _re.sub(r"<(style|script|head)[^>]*>.*?</\1>", " ", original_html, flags=_re.DOTALL | _re.IGNORECASE)
+            # Remove comments
+            cleaned = _re.sub(r"<!--.*?-->", " ", cleaned, flags=_re.DOTALL)
+            # Remove wrapper tags
+            cleaned = _re.sub(r"</?(html|body|meta|title|div|section|article|header|footer)[^>]*/?>", " ", cleaned, flags=_re.IGNORECASE)
+            # Collapse whitespace
+            cleaned = _re.sub(r"\s+", " ", cleaned).strip()
+
+            # Find where the first word of our snippet appears in the plain text
+            words = plain_snippet.rstrip(".").split()
+            if not words:
+                return plain_snippet
+
+            # Find the plain-text offset of our first word
+            plain = _re.sub(r"<[^>]+>", "", cleaned)
+            plain = _re.sub(r"\s+", " ", plain).strip()
+            idx = plain.find(words[0])
+            if idx < 0:
+                return plain_snippet
+
+            # Walk HTML to find the HTML position corresponding to plain-text idx
+            pos = 0
+            in_tag = False
+            html_offset = 0
+            for i, ch in enumerate(cleaned):
+                if ch == "<":
+                    in_tag = True
+                    continue
+                if ch == ">":
+                    in_tag = False
+                    html_offset = i + 1
+                    continue
+                if not in_tag:
+                    if pos == idx:
+                        # Back up to include any opening tags
+                        search_back = cleaned[:i]
+                        last_open = search_back.rfind("<")
+                        start = last_open if last_open >= 0 and ">" not in cleaned[last_open:i] else i
+
+                        # Extract enough HTML to cover ~3 words of plain text
+                        # Count plain chars until we have enough
+                        target = len(" ".join(words[:3])) + 5  # small margin
+                        cp = 0
+                        end = start
+                        in_t = False
+                        for j in range(start, len(cleaned)):
+                            c = cleaned[j]
+                            if c == "<":
+                                in_t = True
+                                continue
+                            if c == ">":
+                                in_t = False
+                                continue
+                            if not in_t:
+                                cp += 1
+                                if cp >= target:
+                                    end = j + 1
+                                    # Include up to 2 closing tags right after
+                                    rest = cleaned[j + 1:j + 40]
+                                    for cm in _re.finditer(r"</(\w+)>", rest):
+                                        end = cm.end() + j + 1
+                                        break
+                                    break
+
+                        snippet = cleaned[start:end]
+                        # Close any unclosed inline tags
+                        for tag in _re.findall(r"<(b|i|u|strong|em)(?:\s[^>]*)?>", snippet, _re.IGNORECASE):
+                            close_pattern = _re.compile(rf"</{tag}>", _re.IGNORECASE)
+                            if not close_pattern.search(snippet):
+                                snippet += f"</{tag}>"
+                        return snippet
+                    pos += 1
+
+            return plain_snippet
+        except Exception:
+            return plain_snippet
 
     def perform_search(self):
         query = self.search_input.text().strip()
