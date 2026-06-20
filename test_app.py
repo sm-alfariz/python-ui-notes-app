@@ -114,7 +114,7 @@ class TestMainWindow(unittest.TestCase):
     def test_main_window_init(self):
         window = MainWindow()
         self.assertEqual(window.windowTitle(), t("en", "app_title"))
-        self.assertEqual(window.tableWidget.columnCount(), 5)
+        self.assertEqual(window.tableWidget.columnCount(), 6)
         self.assertGreaterEqual(window.tableWidget.rowCount(), 0)
 
 
