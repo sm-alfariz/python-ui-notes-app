@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QStyledItemDelegate,
     QStyleOptionViewItem,
     QStyle,
+    QMenu,
 )
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtCore import Qt, QSettings
@@ -190,6 +191,8 @@ class MainWindow(QMainWindow):
         self.tableWidget.setSelectionBehavior(QTableWidget.SelectRows)
         self.tableWidget.setEditTriggers(QTableWidget.NoEditTriggers)
         self.tableWidget.doubleClicked.connect(self.view_detail)
+        self.tableWidget.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tableWidget.customContextMenuRequested.connect(self.show_context_menu)
 
         # Use HTML delegate for catatan column (col 2)
         self.tableWidget.setItemDelegateForColumn(2, HTMLDelegate(self.tableWidget))
@@ -716,6 +719,70 @@ class MainWindow(QMainWindow):
         if reply == QMessageBox.Yes:
             self.db.delete_note(note_id)
             self.display_notes()
+
+    def show_context_menu(self, pos):
+        """Show right-click context menu on the table with detail, edit, delete, and lock/unlock."""
+        index = self.tableWidget.indexAt(pos)
+        if not index.isValid():
+            return
+
+        # Select the row that was right-clicked
+        self.tableWidget.selectRow(index.row())
+
+        row = index.row()
+        is_locked = self.tableWidget.item(row, 4).data(Qt.UserRole)
+
+        style = self.style()
+        menu = QMenu(self)
+
+        # Detail action with built-in Qt icon
+        detail_action = QAction(
+            style.standardIcon(QStyle.SP_MessageBoxInformation), self.t("detail"), self
+        )
+        detail_action.triggered.connect(self.view_detail)
+        menu.addAction(detail_action)
+
+        # Edit action with built-in Qt icon
+        edit_action = QAction(
+            style.standardIcon(QStyle.SP_FileDialogInfoView), self.t("edit"), self
+        )
+        edit_action.triggered.connect(self.edit_note)
+        menu.addAction(edit_action)
+
+        # Delete action with built-in Qt icon
+        delete_action = QAction(
+            style.standardIcon(QStyle.SP_DialogDiscardButton), self.t("delete"), self
+        )
+        delete_action.triggered.connect(self.delete_note)
+        menu.addAction(delete_action)
+
+        menu.addSeparator()
+
+        # Lock / Unlock toggle action with built-in Qt icon
+        if is_locked:
+            lock_label = TRANSLATIONS.get(self.current_lang, {}).get("unlock", "Unlock")
+            lock_icon = style.standardIcon(QStyle.SP_DialogNoButton)
+        else:
+            lock_label = self.t("lock")
+            lock_icon = style.standardIcon(QStyle.SP_DialogApplyButton)
+
+        lock_action = QAction(lock_icon, lock_label, self)
+        lock_action.triggered.connect(lambda: self.toggle_lock(row))
+        menu.addAction(lock_action)
+
+        menu.exec(self.tableWidget.viewport().mapToGlobal(pos))
+
+    def toggle_lock(self, row):
+        """Toggle the lock state of the note at the given row."""
+        note_id = int(self.tableWidget.item(row, 0).text())
+        title = self.tableWidget.item(row, 1).data(Qt.UserRole)
+        catatan_html = self.tableWidget.item(row, 2).data(Qt.UserRole)
+        sumber = self.tableWidget.item(row, 3).data(Qt.UserRole)
+        is_locked = self.tableWidget.item(row, 4).data(Qt.UserRole)
+
+        new_locked = 0 if is_locked else 1
+        self.db.update_note(note_id, title, catatan_html, sumber, new_locked)
+        self.display_notes()
 
     def format_date(self, date_str):
         """Format date string to %d/%m/%Y %H:%M:%S format"""
