@@ -152,6 +152,7 @@ erDiagram
 17. support for note attachments (add, delete, and download any file type on add/edit and detail windows)
 18. dynamic UI themes support from `.qss` style files in the `src/themes` directory
 19. note locking — toggle lock on add/edit to hide Note and Source columns in the table with a 🔒 indicator; title and date remain visible for quick identification
+20. multi-select delete — hold Ctrl+Click or Shift+Click to select multiple rows, then delete them all at once with a single confirmation
 
 ## pyinstaller
 
@@ -178,6 +179,7 @@ see pyinstaller doc for more info <https://pyinstaller.readthedocs.io/en/stable/
 2. ~~add lock feature for some screet notes, example like password or screet api key an token~~
 3. ~~add export and import feature or backup and restore feature~~
 4. ~~add HTML and PDF export for individual notes~~
+5. ~~user can multiple delete at once with confirmation~~
 
 ## license
 
