@@ -58,27 +58,33 @@ class DatabaseManager:
             if columns and "catatan_id" in columns and "notes_id" not in columns:
                 cursor.execute("ALTER TABLE attachment_file RENAME COLUMN catatan_id TO notes_id")
 
-    def add_note(self, title, catatan, sumber_catatan=None):
+            # Add is_locked column if missing
+            cursor.execute("PRAGMA table_info(notes)")
+            note_columns = [row[1] for row in cursor.fetchall()]
+            if "is_locked" not in note_columns:
+                cursor.execute("ALTER TABLE notes ADD COLUMN is_locked INTEGER DEFAULT 0")
+
+    def add_note(self, title, catatan, sumber_catatan=None, is_locked=0):
         with self._connect() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO notes (title, catatan, sumber_catatan) VALUES (?, ?, ?)",
-                (title, catatan, sumber_catatan)
+                "INSERT INTO notes (title, catatan, sumber_catatan, is_locked) VALUES (?, ?, ?, ?)",
+                (title, catatan, sumber_catatan, is_locked)
             )
             return cursor.lastrowid
 
     def get_all_notes(self):
         with self._connect() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT id, title, catatan, sumber_catatan, created_at FROM notes ORDER BY created_at DESC")
+            cursor.execute("SELECT id, title, catatan, sumber_catatan, created_at, is_locked FROM notes ORDER BY created_at DESC")
             return cursor.fetchall()
 
-    def update_note(self, note_id, title, catatan, sumber_catatan=None):
+    def update_note(self, note_id, title, catatan, sumber_catatan=None, is_locked=0):
         with self._connect() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "UPDATE notes SET title = ?, catatan = ?, sumber_catatan = ? WHERE id = ?",
-                (title, catatan, sumber_catatan, note_id)
+                "UPDATE notes SET title = ?, catatan = ?, sumber_catatan = ?, is_locked = ? WHERE id = ?",
+                (title, catatan, sumber_catatan, is_locked, note_id)
             )
 
     def delete_note(self, note_id):
@@ -116,7 +122,7 @@ class DatabaseManager:
             cursor = conn.cursor()
             search_pattern = f"%{query}%"
             cursor.execute("""
-                SELECT id, title, catatan, sumber_catatan, created_at
+                SELECT id, title, catatan, sumber_catatan, created_at, is_locked
                 FROM notes
                 WHERE title LIKE ? OR catatan LIKE ? OR sumber_catatan LIKE ?
                 ORDER BY created_at DESC
@@ -130,7 +136,7 @@ class DatabaseManager:
             if search_query:
                 pattern = f"%{search_query}%"
                 cursor.execute("""
-                    SELECT id, title, catatan, sumber_catatan, created_at
+                    SELECT id, title, catatan, sumber_catatan, created_at, is_locked
                     FROM notes
                     WHERE title LIKE ? OR catatan LIKE ? OR sumber_catatan LIKE ?
                     ORDER BY created_at DESC
@@ -138,7 +144,7 @@ class DatabaseManager:
                 """, (pattern, pattern, pattern, limit, offset))
             else:
                 cursor.execute("""
-                    SELECT id, title, catatan, sumber_catatan, created_at
+                    SELECT id, title, catatan, sumber_catatan, created_at, is_locked
                     FROM notes
                     ORDER BY created_at DESC
                     LIMIT ? OFFSET ?
