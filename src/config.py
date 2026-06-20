@@ -79,8 +79,27 @@ def load_translations():
             "view": "&View",
             "Theme" : "Theme",
             "default" : "Default",
+            "lock" : "Lock",
             "facebook_dark" : "Facebook Dark",
             "facebook_light" : "Facebook Light"
+        },
+        "id": {
+            "app_title": "CS | Catat Segala",
+            "add_note": "Tambah Catatan",
+            "edit": "Ubah",
+            "delete": "Hapus",
+            "detail": "Detail",
+            "refresh": "Refresh",
+            "exit": "Keluar",
+            "search": "Cari:",
+            "search_placeholder": "Cari judul, isi, atau sumber...",
+            "clear": "Clear",
+            "id": "ID",
+            "title": "Judul",
+            "note": "Catatan",
+            "source": "Sumber",
+            "date_time": "Tgl/Jam",
+            "lock": "Kunci"
         }
     }
 
