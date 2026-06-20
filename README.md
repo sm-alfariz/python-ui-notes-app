@@ -96,6 +96,7 @@ erDiagram
         string catatan
         string sumber_catatan
         datetime created_at
+        int is_locked
     }
     attachment_file {
         int id PK
@@ -115,6 +116,7 @@ erDiagram
    - `catatan` (TEXT NOT NULL) - Note content (supports HTML/rich text).
    - `sumber_catatan` (TEXT) - Optional source/reference.
    - `created_at` (DATETIME DEFAULT CURRENT_TIMESTAMP) - Date/time created.
+   - `is_locked` (INTEGER DEFAULT 0) - Lock flag. When `1`, the Note and Source columns are hidden in the table UI and replaced with a lock icon (🔒).
 
 2. **`attachment_file` Table**:
    - `id` (INTEGER PRIMARY KEY AUTOINCREMENT) - Unique identifier for each attachment.
@@ -146,6 +148,7 @@ erDiagram
 13. text editor support for pasting images directly from the clipboard (embedded as base64 HTML)
 14. support for note attachments (add, delete, and download any file type on add/edit and detail windows)
 15. dynamic UI themes support from `.qss` style files in the `src/themes` directory
+16. note locking — toggle lock on add/edit to hide Note and Source columns in the table with a 🔒 indicator; title and date remain visible for quick identification
 
 ## pyinstaller
 
@@ -169,7 +172,7 @@ see pyinstaller doc for more info <https://pyinstaller.readthedocs.io/en/stable/
 ### TODO
 
 1. ~~add image upload if needed~~
-2. add lock feature for some screet notes, example like password or screet api key an token
+2. ~~add lock feature for some screet notes, example like password or screet api key an token~~
 3. ~~add export and import feature or backup and restore feature~~
 
 ## license
