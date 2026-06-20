@@ -1,6 +1,7 @@
 import sys
 import unittest
 import os
+import tempfile
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
@@ -75,6 +76,30 @@ class TestConfigTranslations(unittest.TestCase):
         self.assertEqual(t("id", "add_note"), "Tambah Catatan")
         self.assertEqual(t("id", "attachments"), "Lampiran:")
 
+    def test_translation_restore_en(self):
+        self.assertEqual(t("en", "restore_db"), "Restore Database")
+        self.assertIn("replace", t("en", "restore_confirm"))
+        self.assertIn("restored", t("en", "restore_success"))
+        self.assertIn("valid", t("en", "restore_invalid_db"))
+
+    def test_translation_restore_id(self):
+        self.assertEqual(t("id", "restore_db"), "Restore Database")
+        self.assertIn("menggantikan", t("id", "restore_confirm"))
+        self.assertIn("direstore", t("id", "restore_success"))
+        self.assertIn("valid", t("id", "restore_invalid_db"))
+
+    def test_translation_export_html(self):
+        self.assertEqual(t("en", "export_html"), "Export as HTML")
+        self.assertEqual(t("en", "save_html"), "Save as HTML")
+        self.assertIn("HTML", t("en", "export_html_success"))
+        self.assertIn("HTML", t("en", "export_html_error"))
+
+    def test_translation_export_pdf(self):
+        self.assertEqual(t("en", "export_pdf"), "Export as PDF")
+        self.assertEqual(t("en", "save_pdf"), "Save as PDF")
+        self.assertIn("PDF", t("en", "export_pdf_success"))
+        self.assertIn("PDF", t("en", "export_pdf_error"))
+
 
 class TestNoteDialog(unittest.TestCase):
     def test_note_dialog_creation(self):
@@ -116,6 +141,56 @@ class TestMainWindow(unittest.TestCase):
         self.assertEqual(window.windowTitle(), t("en", "app_title"))
         self.assertEqual(window.tableWidget.columnCount(), 6)
         self.assertGreaterEqual(window.tableWidget.rowCount(), 0)
+
+    def test_main_window_has_restore_and_export_methods(self):
+        """Verify new methods exist on MainWindow."""
+        self.assertTrue(callable(getattr(MainWindow, "restore_database", None)))
+        self.assertTrue(callable(getattr(MainWindow, "_validate_sqlite_file", None)))
+        self.assertTrue(callable(getattr(MainWindow, "export_note_as_html", None)))
+        self.assertTrue(callable(getattr(MainWindow, "export_note_as_pdf", None)))
+        self.assertTrue(callable(getattr(MainWindow, "_get_selected_note_data", None)))
+
+    def test_validate_sqlite_file_valid(self):
+        """Test _validate_sqlite_file with a real SQLite database."""
+        import tempfile
+        import sqlite3 as sq
+
+        # Create a valid temp SQLite file
+        fd, path = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        conn = sq.connect(path)
+        conn.execute("CREATE TABLE test (id INTEGER)")
+        conn.commit()
+        conn.close()
+
+        window = MainWindow.__new__(MainWindow)
+        self.assertTrue(window._validate_sqlite_file(path))
+        os.unlink(path)
+
+    def test_validate_sqlite_file_invalid(self):
+        """Test _validate_sqlite_file with non-SQLite files."""
+        window = MainWindow.__new__(MainWindow)
+
+        # Text file
+        fd, txt = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        with open(txt, "w") as f:
+            f.write("not a database")
+        self.assertFalse(window._validate_sqlite_file(txt))
+        os.unlink(txt)
+
+        # Empty file
+        fd, empty = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        self.assertFalse(window._validate_sqlite_file(empty))
+        os.unlink(empty)
+
+    def test_get_selected_note_data_no_selection(self):
+        """Test _get_selected_note_data returns None when no row is selected."""
+        window = MainWindow()
+        # No selection — currentRow() returns -1
+        result = window._get_selected_note_data()
+        self.assertIsNone(result)
 
 
 if __name__ == "__main__":
