@@ -184,7 +184,7 @@ class MainWindow(QMainWindow):
 
         # Table widget
         self.tableWidget = QTableWidget()
-        self.tableWidget.setColumnCount(5)
+        self.tableWidget.setColumnCount(6)
         self.retranslate_table_headers()
         self.tableWidget.setColumnHidden(0, True)
         self.tableWidget.setSelectionBehavior(QTableWidget.SelectRows)
@@ -271,6 +271,7 @@ class MainWindow(QMainWindow):
                 self.t("title"),
                 self.t("note"),
                 self.t("source"),
+                self.t("lock"),
                 self.t("date_time"),
             ]
         )
@@ -417,41 +418,69 @@ class MainWindow(QMainWindow):
 
         for i, note in enumerate(notes):
             row_index = start_row + i
-            # note = (id, title, catatan_html, sumber, created_at)
+            # note = (id, title, catatan_html, sumber, created_at, is_locked)
+            is_locked = note[5] if len(note) > 5 else 0
 
             # ID (hidden)
             self.tableWidget.setItem(row_index, 0, QTableWidgetItem(str(note[0])))
 
-            # Title
-            self.tableWidget.setItem(row_index, 1, QTableWidgetItem(str(note[1])))
+            # Title — always show real title
+            item_title = QTableWidgetItem(str(note[1]))
+            item_title.setData(Qt.UserRole, note[1])
+            self.tableWidget.setItem(row_index, 1, item_title)
 
-            # Catatan snippet – show 3 words with HTML formatting
-            catatan_text = self.strip_html(str(note[2]))
-            words = catatan_text.split()
-            if len(words) > 3:
-                snippet = " ".join(words[:3]) + "..."
+            # Catatan (Note) — hide if locked
+            if is_locked:
+                item_catatan = QTableWidgetItem("🔒")
+                item_catatan.setData(Qt.UserRole, note[2])
+                big_font = item_catatan.font()
+                big_font.setPointSize(16)
+                item_catatan.setFont(big_font)
+                item_catatan.setTextAlignment(Qt.AlignCenter)
             else:
-                snippet = catatan_text
-
-            # Build HTML snippet preserving formatting from original content
-            html_snippet = self._build_snippet_html(note[2], snippet)
-            item_catatan = QTableWidgetItem()
-            item_catatan.setToolTip(self.t("tooltip_detail"))
-            item_catatan.setData(Qt.DisplayRole, snippet)
-            item_catatan.setData(Qt.UserRole, note[2])  # original full HTML for edit/detail
-            item_catatan.setData(Qt.UserRole + 1, html_snippet)  # formatted snippet for display
+                catatan_text = self.strip_html(str(note[2]))
+                words = catatan_text.split()
+                if len(words) > 3:
+                    snippet = " ".join(words[:3]) + "..."
+                else:
+                    snippet = catatan_text
+                html_snippet = self._build_snippet_html(note[2], snippet)
+                item_catatan = QTableWidgetItem()
+                item_catatan.setToolTip(self.t("tooltip_detail"))
+                item_catatan.setData(Qt.DisplayRole, snippet)
+                item_catatan.setData(Qt.UserRole, note[2])  # original full HTML for edit/detail
+                item_catatan.setData(Qt.UserRole + 1, html_snippet)  # formatted snippet for display
             self.tableWidget.setItem(row_index, 2, item_catatan)
 
-            # Sumber
-            self.tableWidget.setItem(
-                row_index, 3, QTableWidgetItem(str(note[3]) if note[3] else "-")
-            )
+            # Sumber — hide if locked
+            if is_locked:
+                item_sumber = QTableWidgetItem("🔒")
+                item_sumber.setData(Qt.UserRole, note[3] if note[3] else "")
+                big_font = item_sumber.font()
+                big_font.setPointSize(16)
+                item_sumber.setFont(big_font)
+                item_sumber.setTextAlignment(Qt.AlignCenter)
+            else:
+                item_sumber = QTableWidgetItem(str(note[3]) if note[3] else "-")
+                item_sumber.setData(Qt.UserRole, note[3] if note[3] else "")
+            self.tableWidget.setItem(row_index, 3, item_sumber)
 
-            # Date
+            # Lock indicator
+            lock_text = "🔒" if is_locked else "🔓"
+            item_lock = QTableWidgetItem(lock_text)
+            lock_font = item_lock.font()
+            lock_font.setPointSize(16)
+            item_lock.setFont(lock_font)
+            item_lock.setTextAlignment(Qt.AlignCenter)
+            item_lock.setData(Qt.UserRole, is_locked)
+            self.tableWidget.setItem(row_index, 4, item_lock)
+
+            # Date (column shifted to 5)
             formatted_date = self.format_date(note[4])
-            self.tableWidget.setItem(row_index, 4, QTableWidgetItem(formatted_date))
+            self.tableWidget.setItem(row_index, 5, QTableWidgetItem(formatted_date))
 
-            self.tableWidget.setRowHeight(row_index, 35)
+            row_h = 45 if is_locked else 35
+            self.tableWidget.setRowHeight(row_index, row_h)
 
     def _update_pagination_ui(self):
         """Update the status label and Load More button visibility."""
@@ -596,7 +625,7 @@ class MainWindow(QMainWindow):
                 return
 
             sumber = data["sumber"].strip() or None
-            note_id = self.db.add_note(data["title"], data["catatan"], sumber)
+            note_id = self.db.add_note(data["title"], data["catatan"], sumber, data.get("is_locked", 0))
             
             # Save attachments
             for att in data["attachments"]:
@@ -611,15 +640,14 @@ class MainWindow(QMainWindow):
             return
 
         note_id = int(self.tableWidget.item(selected_row, 0).text())
-        title = self.tableWidget.item(selected_row, 1).text()
+        title = self.tableWidget.item(selected_row, 1).data(Qt.UserRole)
         # Retrieve full HTML from UserRole data
         catatan_html = self.tableWidget.item(selected_row, 2).data(Qt.UserRole)
-        sumber = self.tableWidget.item(selected_row, 3).text()
-        if sumber == "-":
-            sumber = ""
+        sumber = self.tableWidget.item(selected_row, 3).data(Qt.UserRole)
+        is_locked = self.tableWidget.item(selected_row, 4).data(Qt.UserRole)
 
         dialog = NoteDialog(
-            self, (note_id, title, catatan_html, sumber), lang=self.current_lang
+            self, (note_id, title, catatan_html, sumber, None, is_locked), lang=self.current_lang
         )
         if dialog.exec():
             data = dialog.get_data()
@@ -631,7 +659,7 @@ class MainWindow(QMainWindow):
                 return
 
             sumber = data["sumber"].strip() or None
-            self.db.update_note(note_id, data["title"], data["catatan"], sumber)
+            self.db.update_note(note_id, data["title"], data["catatan"], sumber, data.get("is_locked", 0))
             
             # Sync attachments
             db_atts = self.db.get_attachments_by_note_id(note_id)
@@ -656,14 +684,15 @@ class MainWindow(QMainWindow):
             return
 
         note_id = int(self.tableWidget.item(selected_row, 0).text())
-        title = self.tableWidget.item(selected_row, 1).text()
+        title = self.tableWidget.item(selected_row, 1).data(Qt.UserRole)
         catatan_html = self.tableWidget.item(selected_row, 2).data(Qt.UserRole)
-        sumber = self.tableWidget.item(selected_row, 3).text()
-        created_at = self.tableWidget.item(selected_row, 4).text()
+        sumber = self.tableWidget.item(selected_row, 3).data(Qt.UserRole)
+        is_locked = self.tableWidget.item(selected_row, 4).data(Qt.UserRole)
+        created_at = self.tableWidget.item(selected_row, 5).text()
 
         dialog = NoteDetailDialog(
             self,
-            (note_id, title, catatan_html, sumber, created_at),
+            (note_id, title, catatan_html, sumber, created_at, is_locked),
             lang=self.current_lang,
         )
         dialog.exec()
