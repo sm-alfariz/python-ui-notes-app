@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QListWidget,
     QMessageBox,
+    QCheckBox,
 )
 from PySide6.QtCore import Qt
 from src.widgets.custom_text_edit import CustomTextEdit
@@ -59,6 +60,12 @@ class NoteDialog(QDialog):
         layout.addRow(self.t("judul_label"), self.title_input)
         layout.addRow(self.t("catatan_label"), self.catatan_input)
         layout.addRow(self.t("sumber_label"), self.sumber_input)
+
+        # Lock checkbox
+        self.lock_checkbox = QCheckBox(self.t("lock"))
+        if note_data and len(note_data) > 5 and note_data[5]:
+            self.lock_checkbox.setChecked(True)
+        layout.addRow(self.t("lock"), self.lock_checkbox)
 
         # Attachments UI List
         self.attachments_list = QListWidget()
@@ -116,6 +123,7 @@ class NoteDialog(QDialog):
             "title": self.title_input.text(),
             "catatan": self.catatan_input.toHtml(),  # Get HTML content
             "sumber": self.sumber_input.text(),
+            "is_locked": 1 if self.lock_checkbox.isChecked() else 0,
             "attachments": self.current_attachments
         }
 
@@ -198,6 +206,13 @@ class NoteDetailDialog(QDialog):
         created_field = QLineEdit(str(created_at))
         created_field.setReadOnly(True)
         info_layout.addRow(self.t("created_at"), created_field)
+
+        # Lock status
+        is_locked = note_data[5] if note_data and len(note_data) > 5 else 0
+        lock_text = "🔒 Locked" if is_locked else "🔓 Unlocked"
+        lock_field = QLineEdit(lock_text)
+        lock_field.setReadOnly(True)
+        info_layout.addRow(self.t("lock"), lock_field)
 
         title_text = QLineEdit(note_data[1] if note_data and note_data[1] else "-")
         title_text.setReadOnly(True)
