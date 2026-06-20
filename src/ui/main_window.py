@@ -362,6 +362,10 @@ class MainWindow(QMainWindow):
         backup_action.triggered.connect(self.backup_notes)
         file_menu.addAction(backup_action)
 
+        restore_action = QAction(self.t("restore_db"), self)
+        restore_action.triggered.connect(self.restore_database)
+        file_menu.addAction(restore_action)
+
         file_menu.addSeparator()
 
         exit_action = QAction(self.t("exit"), self)
@@ -853,3 +857,72 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, self.t("warning"), self.t("db_not_found"))
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Gagal mem-backup database: {str(e)}")
+
+    def _validate_sqlite_file(self, file_path):
+        """Check if the given file is a valid SQLite database."""
+        try:
+            import sqlite3
+            # Check file is not empty
+            if os.path.getsize(file_path) == 0:
+                return False
+            # Check SQLite magic header (first 16 bytes = "SQLite format 3\000")
+            with open(file_path, "rb") as f:
+                header = f.read(16)
+            if header != b"SQLite format 3\x00":
+                return False
+            # Verify the file can be opened and queried
+            conn = sqlite3.connect(f"file:{file_path}?mode=ro", uri=True)
+            conn.execute("SELECT count(*) FROM sqlite_master")
+            conn.close()
+            return True
+        except (sqlite3.DatabaseError, Exception):
+            return False
+
+    def restore_database(self):
+        """Restore the database from a user-selected .db file."""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, self.t("restore_db"), "", "SQLite Database (*.db)"
+        )
+        if not file_path:
+            return
+
+        # Validate the selected file is a valid SQLite database
+        if not self._validate_sqlite_file(file_path):
+            QMessageBox.warning(
+                self, self.t("warning"), self.t("restore_invalid_db")
+            )
+            return
+
+        # Show confirmation warning
+        reply = QMessageBox.warning(
+            self,
+            self.t("warning"),
+            self.t("restore_confirm"),
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        try:
+            db_target = self.db.db_name
+
+            # Copy the selected file over the current database
+            shutil.copy2(file_path, db_target)
+
+            # Reinitialize DatabaseManager so it picks up the new file
+            self.db = DatabaseManager()
+
+            # Reset pagination and search state, then refresh the table
+            self._current_offset = 0
+            self._current_search = None
+            self.search_input.clear()
+            self.display_notes(reset=True)
+
+            QMessageBox.information(
+                self, self.t("success"), self.t("restore_success").format(file_path)
+            )
+        except Exception as e:
+            QMessageBox.critical(
+                self, "Error", self.t("restore_error").format(str(e))
+            )
