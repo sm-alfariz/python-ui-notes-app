@@ -13,7 +13,10 @@ from PySide6.QtWidgets import (
     QListWidget,
     QMessageBox,
     QCheckBox,
+    QMenu,
+    QStyle,
 )
+from PySide6.QtGui import QAction
 from PySide6.QtCore import Qt
 from src.widgets.custom_text_edit import CustomTextEdit
 from src.config import t
@@ -87,6 +90,8 @@ class NoteDialog(QDialog):
             }
         """)
         self.attachments_list.itemDoubleClicked.connect(self.download_attachment)
+        self.attachments_list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.attachments_list.customContextMenuRequested.connect(self.show_attachment_context_menu)
         self.update_attachments_list()
 
         att_buttons_layout = QHBoxLayout()
@@ -187,6 +192,49 @@ class NoteDialog(QDialog):
                     )
                 except Exception as e:
                     QMessageBox.critical(self, "Error", f"Gagal menyimpan file: {str(e)}")
+
+    def show_attachment_context_menu(self, pos):
+        """Show right-click context menu on the attachments list with save and remove actions."""
+        # Select the item under the cursor so actions target it
+        item = self.attachments_list.itemAt(pos)
+        if item:
+            self.attachments_list.setCurrentItem(item)
+
+        style = self.style()
+        menu = QMenu(self)
+
+        # Save/Download action with built-in Qt icon
+        save_action = QAction(
+            style.standardIcon(QStyle.SP_DialogSaveButton), self.t("save_attachment"), self
+        )
+        save_action.triggered.connect(self._context_save_attachment)
+        menu.addAction(save_action)
+
+        menu.addSeparator()
+
+        # Remove action with built-in Qt icon
+        remove_action = QAction(
+            style.standardIcon(QStyle.SP_DialogDiscardButton), self.t("remove_attachment"), self
+        )
+        remove_action.triggered.connect(self._context_remove_attachment)
+        menu.addAction(remove_action)
+
+        menu.exec(self.attachments_list.viewport().mapToGlobal(pos))
+
+    def _context_save_attachment(self):
+        """Save the right-clicked attachment."""
+        item = self.attachments_list.currentItem()
+        if item:
+            self.download_attachment(item)
+
+    def _context_remove_attachment(self):
+        """Remove the right-clicked attachment."""
+        item = self.attachments_list.currentItem()
+        if item:
+            row = self.attachments_list.row(item)
+            if 0 <= row < len(self.current_attachments):
+                self.current_attachments.pop(row)
+                self.update_attachments_list()
 
 
 class NoteDetailDialog(QDialog):
