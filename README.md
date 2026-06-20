@@ -143,12 +143,15 @@ erDiagram
 8. support html in catatan field, and you can paste from some web example
 9. export note to csv
 10. backup database Sqlite3 format
-11. language switcher with ini file as dictionary
-12. paginated list loading with "Load More" button to keep performance optimal
-13. text editor support for pasting images directly from the clipboard (embedded as base64 HTML)
-14. support for note attachments (add, delete, and download any file type on add/edit and detail windows)
-15. dynamic UI themes support from `.qss` style files in the `src/themes` directory
-16. note locking — toggle lock on add/edit to hide Note and Source columns in the table with a 🔒 indicator; title and date remain visible for quick identification
+11. restore database from backup file
+12. export individual notes as HTML (full standalone document with metadata)
+13. export individual notes as PDF (renders rich text with consistent fonts)
+14. language switcher with ini file as dictionary
+15. paginated list loading with "Load More" button to keep performance optimal
+16. text editor support for pasting images directly from the clipboard (embedded as base64 HTML)
+17. support for note attachments (add, delete, and download any file type on add/edit and detail windows)
+18. dynamic UI themes support from `.qss` style files in the `src/themes` directory
+19. note locking — toggle lock on add/edit to hide Note and Source columns in the table with a 🔒 indicator; title and date remain visible for quick identification
 
 ## pyinstaller
 
@@ -174,6 +177,7 @@ see pyinstaller doc for more info <https://pyinstaller.readthedocs.io/en/stable/
 1. ~~add image upload if needed~~
 2. ~~add lock feature for some screet notes, example like password or screet api key an token~~
 3. ~~add export and import feature or backup and restore feature~~
+4. ~~add HTML and PDF export for individual notes~~
 
 ## license
 

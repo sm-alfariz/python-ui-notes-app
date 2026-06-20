@@ -23,8 +23,8 @@ from PySide6.QtWidgets import (
     QStyle,
     QMenu,
 )
-from PySide6.QtGui import QAction, QIcon
-from PySide6.QtCore import Qt, QSettings
+from PySide6.QtGui import QAction, QIcon, QDesktopServices
+from PySide6.QtCore import Qt, QSettings, QUrl
 from database import DatabaseManager
 from src.dialogs.note_dialogs import NoteDialog, NoteDetailDialog
 from src.config import t, TRANSLATIONS
@@ -1003,6 +1003,7 @@ class MainWindow(QMainWindow):
                 self, self.t("success"),
                 self.t("export_html_success").format(file_path),
             )
+            QDesktopServices.openUrl(QUrl.fromLocalFile(file_path))
         except Exception as e:
             QMessageBox.critical(
                 self, "Error", self.t("export_html_error").format(str(e))
@@ -1056,6 +1057,7 @@ class MainWindow(QMainWindow):
                 self, self.t("success"),
                 self.t("export_pdf_success").format(file_path),
             )
+            QDesktopServices.openUrl(QUrl.fromLocalFile(file_path))
         except Exception as e:
             QMessageBox.critical(
                 self, "Error", self.t("export_pdf_error").format(str(e))
