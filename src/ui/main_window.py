@@ -189,6 +189,7 @@ class MainWindow(QMainWindow):
         self.retranslate_table_headers()
         self.tableWidget.setColumnHidden(0, True)
         self.tableWidget.setSelectionBehavior(QTableWidget.SelectRows)
+        self.tableWidget.setSelectionMode(QTableWidget.ExtendedSelection)
         self.tableWidget.setEditTriggers(QTableWidget.NoEditTriggers)
         self.tableWidget.doubleClicked.connect(self.view_detail)
         self.tableWidget.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -705,23 +706,32 @@ class MainWindow(QMainWindow):
         dialog.exec()
 
     def delete_note(self):
-        selected_row = self.tableWidget.currentRow()
-        if selected_row < 0:
+        selected_rows = self.tableWidget.selectionModel().selectedRows()
+        if not selected_rows:
             QMessageBox.warning(
                 self, self.t("warning"), self.t("select_delete_warning")
             )
             return
 
-        note_id = int(self.tableWidget.item(selected_row, 0).text())
+        count = len(selected_rows)
+        confirm_msg = self.t("delete_confirm")
+        if count > 1:
+            confirm_msg = f"{self.t('delete_confirm').rstrip('?')} {count} notes?"
+
         reply = QMessageBox.question(
             self,
             self.t("confirm"),
-            self.t("delete_confirm"),
+            confirm_msg,
             QMessageBox.Yes | QMessageBox.No,
         )
 
         if reply == QMessageBox.Yes:
-            self.db.delete_note(note_id)
+            note_ids = [
+                int(self.tableWidget.item(idx.row(), 0).text())
+                for idx in selected_rows
+            ]
+            for nid in note_ids:
+                self.db.delete_note(nid)
             self.display_notes()
 
     def show_context_menu(self, pos):
