@@ -80,6 +80,7 @@ def load_translations():
             "Theme" : "Theme",
             "default" : "Default",
             "lock" : "Lock",
+            "unlock" : "Unlock",
             "facebook_dark" : "Facebook Dark",
             "facebook_light" : "Facebook Light"
         },
@@ -99,7 +100,8 @@ def load_translations():
             "note": "Catatan",
             "source": "Sumber",
             "date_time": "Tgl/Jam",
-            "lock": "Kunci"
+            "lock": "Kunci",
+            "unlock": "Buka Kunci"
         }
     }
 
