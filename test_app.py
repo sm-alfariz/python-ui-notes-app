@@ -131,16 +131,23 @@ class TestNoteDialog(unittest.TestCase):
 
 class TestMainWindow(unittest.TestCase):
     def setUp(self):
-        """Reset QSettings to avoid persisted language affecting assertions."""
+        """Reset QSettings and clean up test notes."""
         from PySide6.QtCore import QSettings
         settings = QSettings("CatatSegala", "python-ui-notes-app")
         settings.clear()
+        self._window = MainWindow()
+
+    def tearDown(self):
+        """Remove any notes added during the test."""
+        if hasattr(self, "_window"):
+            notes = self._window.db.get_all_notes()
+            for n in notes:
+                self._window.db.delete_note(n[0])
 
     def test_main_window_init(self):
-        window = MainWindow()
-        self.assertEqual(window.windowTitle(), t("en", "app_title"))
-        self.assertEqual(window.tableWidget.columnCount(), 6)
-        self.assertGreaterEqual(window.tableWidget.rowCount(), 0)
+        self.assertEqual(self._window.windowTitle(), t("en", "app_title"))
+        self.assertEqual(self._window.tableWidget.columnCount(), 6)
+        self.assertGreaterEqual(self._window.tableWidget.rowCount(), 0)
 
     def test_main_window_has_restore_and_export_methods(self):
         """Verify new methods exist on MainWindow."""
@@ -187,10 +194,67 @@ class TestMainWindow(unittest.TestCase):
 
     def test_get_selected_note_data_no_selection(self):
         """Test _get_selected_note_data returns None when no row is selected."""
-        window = MainWindow()
         # No selection — currentRow() returns -1
-        result = window._get_selected_note_data()
+        result = self._window._get_selected_note_data()
         self.assertIsNone(result)
+
+    def test_table_extended_selection_mode(self):
+        """Test table widget uses ExtendedSelection mode for multi-select."""
+        from PySide6.QtWidgets import QTableWidget
+        self.assertEqual(
+            self._window.tableWidget.selectionMode(),
+            QTableWidget.ExtendedSelection,
+        )
+
+    def test_table_select_rows_behavior(self):
+        """Test table widget uses SelectRows behavior."""
+        from PySide6.QtWidgets import QTableWidget
+        self.assertEqual(
+            self._window.tableWidget.selectionBehavior(),
+            QTableWidget.SelectRows,
+        )
+
+    def test_delete_note_no_selection_shows_warning(self):
+        """Test delete_note does nothing and returns None when no row is selected."""
+        from unittest.mock import patch
+
+        # Patch QMessageBox.warning to avoid blocking dialog
+        with patch("PySide6.QtWidgets.QMessageBox.warning", return_value=0):
+            result = self._window.delete_note()
+        self.assertIsNone(result)
+
+    def test_delete_multiple_notes(self):
+        """Test delete_note removes multiple selected notes at once."""
+        from unittest.mock import patch
+        from PySide6.QtCore import QItemSelectionModel
+
+        # Clear existing notes first
+        for n in self._window.db.get_all_notes():
+            self._window.db.delete_note(n[0])
+
+        # Insert two test notes directly into the database
+        self._window.db.add_note("Multi Delete 1", "<p>Content 1</p>", "Source 1")
+        self._window.db.add_note("Multi Delete 2", "<p>Content 2</p>", "Source 2")
+        self._window.display_notes()
+
+        self.assertEqual(self._window.tableWidget.rowCount(), 2)
+
+        # Multi-select rows using the selection model
+        sel_model = self._window.tableWidget.selectionModel()
+        index0 = self._window.tableWidget.model().index(0, 0)
+        index1 = self._window.tableWidget.model().index(1, 0)
+        sel_model.select(index0, QItemSelectionModel.Select | QItemSelectionModel.Rows)
+        sel_model.select(index1, QItemSelectionModel.Select | QItemSelectionModel.Rows)
+
+        selected = self._window.tableWidget.selectionModel().selectedRows()
+        self.assertEqual(len(selected), 2)
+
+        # Mock QMessageBox.question to return Yes so delete proceeds
+        with patch("PySide6.QtWidgets.QMessageBox.question", return_value=16384):
+            self._window.delete_note()
+
+        notes = self._window.db.get_all_notes()
+        self.assertEqual(len(notes), 0)
 
 
 if __name__ == "__main__":
