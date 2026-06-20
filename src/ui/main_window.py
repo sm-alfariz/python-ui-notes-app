@@ -774,6 +774,22 @@ class MainWindow(QMainWindow):
         lock_action.triggered.connect(lambda: self.toggle_lock(row))
         menu.addAction(lock_action)
 
+        menu.addSeparator()
+
+        # Export as HTML action
+        export_html_action = QAction(
+            style.standardIcon(QStyle.SP_FileIcon), self.t("export_html"), self
+        )
+        export_html_action.triggered.connect(self.export_note_as_html)
+        menu.addAction(export_html_action)
+
+        # Export as PDF action
+        export_pdf_action = QAction(
+            style.standardIcon(QStyle.SP_FileDialogDetailedView), self.t("export_pdf"), self
+        )
+        export_pdf_action.triggered.connect(self.export_note_as_pdf)
+        menu.addAction(export_pdf_action)
+
         menu.exec(self.tableWidget.viewport().mapToGlobal(pos))
 
     def toggle_lock(self, row):
@@ -925,4 +941,122 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.critical(
                 self, "Error", self.t("restore_error").format(str(e))
+            )
+
+    def _get_selected_note_data(self):
+        """Helper to retrieve note data from the selected table row."""
+        selected_row = self.tableWidget.currentRow()
+        if selected_row < 0:
+            return None
+        return {
+            "title": self.tableWidget.item(selected_row, 1).data(Qt.UserRole),
+            "catatan_html": self.tableWidget.item(selected_row, 2).data(Qt.UserRole),
+            "sumber": self.tableWidget.item(selected_row, 3).data(Qt.UserRole),
+            "created_at": self.tableWidget.item(selected_row, 5).text(),
+        }
+
+    def export_note_as_html(self):
+        """Export the selected note as a standalone HTML file."""
+        data = self._get_selected_note_data()
+        if not data:
+            return
+
+        title = data["title"] or "note"
+        sumber = data["sumber"] or "-"
+        catatan_html = data["catatan_html"] or ""
+        created_at = data["created_at"] or "-"
+
+        full_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>{title}</title>
+    <style>
+        body {{ font-family: sans-serif; margin: 40px; line-height: 1.6; color: #333; }}
+        h1 {{ color: #222; border-bottom: 2px solid #eee; padding-bottom: 8px; }}
+        .metadata {{ color: #666; margin-bottom: 20px; font-size: 0.9em; }}
+    </style>
+</head>
+<body>
+    <h1>{title}</h1>
+    <div class="metadata">
+        <p><strong>Source:</strong> {sumber}</p>
+        <p><strong>Date:</strong> {created_at}</p>
+    </div>
+    <hr>
+    {catatan_html}
+</body>
+</html>"""
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, self.t("save_html"), f"{title}.html", "HTML Files (*.html)"
+        )
+        if not file_path:
+            return
+        if not file_path.endswith(".html"):
+            file_path += ".html"
+
+        try:
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(full_html)
+            QMessageBox.information(
+                self, self.t("success"),
+                self.t("export_html_success").format(file_path),
+            )
+        except Exception as e:
+            QMessageBox.critical(
+                self, "Error", self.t("export_html_error").format(str(e))
+            )
+
+    def export_note_as_pdf(self):
+        """Export the selected note as a PDF file using QTextDocument + QPrinter."""
+        data = self._get_selected_note_data()
+        if not data:
+            return
+
+        title = data["title"] or "note"
+        sumber = data["sumber"] or "-"
+        catatan_html = data["catatan_html"] or ""
+        created_at = data["created_at"] or "-"
+
+        # Strip inline font-size from note content to avoid scaling issues
+        catatan_clean = re.sub(r'font-size:\s*\d+[^;"]*;', '', catatan_html)
+
+        html_content = f"""
+        <h1>{title}</h1>
+        <p><strong>Source:</strong> {sumber}</p>
+        <p><strong>Date:</strong> {created_at}</p>
+        <hr>
+        {catatan_clean}
+        """
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, self.t("save_pdf"), f"{title}.pdf", "PDF Files (*.pdf)"
+        )
+        if not file_path:
+            return
+        if not file_path.endswith(".pdf"):
+            file_path += ".pdf"
+
+        try:
+            from PySide6.QtGui import QTextDocument, QFont
+            from PySide6.QtPrintSupport import QPrinter
+
+            doc = QTextDocument()
+            doc.setDefaultFont(QFont("sans-serif", 11))
+            doc.setHtml(html_content)
+
+            printer = QPrinter(QPrinter.HighResolution)
+            printer.setOutputFormat(QPrinter.PdfFormat)
+            printer.setOutputFileName(file_path)
+
+            doc.print_(printer)
+
+            QMessageBox.information(
+                self, self.t("success"),
+                self.t("export_pdf_success").format(file_path),
+            )
+        except Exception as e:
+            QMessageBox.critical(
+                self, "Error", self.t("export_pdf_error").format(str(e))
             )
