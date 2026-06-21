@@ -12,6 +12,8 @@ from PySide6.QtCore import QSettings
 from PySide6.QtGui import QAction, QActionGroup
 from PySide6.QtWidgets import QApplication, QMenu
 
+from src.config import _get_source_dir
+
 
 class ThemeManager:
     """Manages application themes loaded from QSS files.
@@ -43,11 +45,7 @@ class ThemeManager:
             Path to the themes directory.
         """
         # Determine source themes directory
-        project_root = os.path.dirname(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        )
-        base_dir = getattr(sys, "_MEIPASS", project_root)
-        source_themes_dir = os.path.join(base_dir, "src", "themes")
+        source_themes_dir = os.path.join(_get_source_dir(), "src", "themes")
 
         # Create target directory if needed
         target_themes_dir = self.TARGET_THEMES_DIR

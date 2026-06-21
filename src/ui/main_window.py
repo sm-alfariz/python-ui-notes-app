@@ -9,8 +9,6 @@ The MainWindow class is organized using mixins to separate concerns:
     - ExportImportMixin: CSV, HTML, PDF export and database backup/restore
 """
 
-from pathlib import Path
-
 from PySide6.QtCore import QSettings, Qt
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import (
@@ -28,7 +26,7 @@ from PySide6.QtWidgets import (
 )
 
 from database import DatabaseManager
-from src.config import t
+from src.config import ASSETS_DIR, t
 from src.ui.delegates import HTMLDelegate
 from src.ui.mixins import ExportImportMixin, NoteOperationsMixin, TableManagementMixin
 from src.ui.theme_manager import ThemeManager
@@ -95,8 +93,7 @@ class MainWindow(
 
     def _setup_window(self) -> None:
         """Set up window properties."""
-        icon_path = Path(__file__).resolve().parent.parent.parent / "assets" / "logo.png"
-        self.setWindowIcon(QIcon(str(icon_path)))
+        self.setWindowIcon(QIcon(os.path.join(ASSETS_DIR, "logo.png")))
         self.setWindowTitle(self.t("app_title"))
         self.resize(900, 600)
 

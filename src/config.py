@@ -1,12 +1,69 @@
 import os
+import shutil
 import sys
 import configparser
 
+
+def _get_source_dir() -> str:
+    """Return the project root directory in source or compiled mode."""
+    # PyInstaller sets _MEIPASS to a temp extraction dir
+    if hasattr(sys, '_MEIPASS'):
+        return sys._MEIPASS
+
+    # Nuitka compiled (onefile or onedir) — executable is in a temp dir
+    if hasattr(sys, '__compiled__'):
+        return os.path.dirname(os.path.abspath(sys.argv[0]))
+
+    # Source / dev mode
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+# Target directory for user data (writable)
+CATAT_SEGALA_DIR = ".catat-segala"
+
+
+def setup_assets_dir() -> str:
+    """Copy built-in assets to .catat-segala/assets if not already there.
+
+    Follows the same pattern as ThemeManager for themes and config.py for
+    language.ini — assets are bundled with the source tree and copied to a
+    writable location on first run.
+
+    Returns:
+        Path to the .catat-segala/assets directory.
+    """
+    source_dir = _get_source_dir()
+    source_assets = os.path.join(source_dir, "assets")
+    target_assets = os.path.join(CATAT_SEGALA_DIR, "assets")
+
+    if not os.path.exists(target_assets):
+        try:
+            os.makedirs(target_assets, exist_ok=True)
+        except OSError:
+            pass
+
+    if os.path.exists(source_assets) and os.path.exists(target_assets):
+        for filename in os.listdir(source_assets):
+            src_file = os.path.join(source_assets, filename)
+            tgt_file = os.path.join(target_assets, filename)
+            if os.path.isfile(src_file) and not os.path.exists(tgt_file):
+                try:
+                    shutil.copy2(src_file, tgt_file)
+                except OSError:
+                    pass
+
+    return target_assets
+
+
+# Assets directory — always reads from .catat-segala/assets
+ASSETS_DIR = setup_assets_dir()
+
+
 def load_translations():
     config = configparser.ConfigParser()
-    
+
     # Target config path in .catat-segala folder
-    folder_name = ".catat-segala"
+    folder_name = CATAT_SEGALA_DIR
     if not os.path.exists(folder_name):
         try:
             os.makedirs(folder_name)
@@ -15,14 +72,13 @@ def load_translations():
     config_path = os.path.join(folder_name, "language.ini")
 
     # Source config path (bundled/distribution location relative to package or _MEIPASS)
-    base_dir = getattr(sys, '_MEIPASS', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    source_config_path = os.path.join(base_dir, "language.ini")
+    source_dir = _get_source_dir()
+    source_config_path = os.path.join(source_dir, "language.ini")
 
     # Copy language.ini to .catat-segala if it doesn't exist there yet
     if not os.path.exists(config_path):
         if os.path.exists(source_config_path):
             try:
-                import shutil
                 shutil.copy2(source_config_path, config_path)
             except Exception:
                 # Fallback to source path directly if copy failed

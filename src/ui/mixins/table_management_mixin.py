@@ -1,12 +1,12 @@
 """Mixin for table display and pagination management."""
 
+import os
 import re
-from pathlib import Path
 from PySide6.QtWidgets import QTableWidgetItem, QMenu
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtCore import Qt
 
-_ASSETS_DIR = Path(__file__).resolve().parents[3] / "assets"
+from src.config import ASSETS_DIR
 
 from src.config import TRANSLATIONS
 from src.ui.utils.string_utils import strip_html, build_snippet_html
@@ -239,7 +239,7 @@ class TableManagementMixin:
         Returns:
             QIcon (empty fallback if file missing).
         """
-        return QIcon(str(_ASSETS_DIR / filename))
+        return QIcon(os.path.join(ASSETS_DIR, filename))
 
     def _add_context_menu_actions(self, menu: QMenu, row: int, is_locked: int) -> None:
         """Add actions to the context menu.
