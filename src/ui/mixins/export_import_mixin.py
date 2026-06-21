@@ -25,6 +25,86 @@ class ExportImportMixin:
         - self._get_selected_note_data(): Method to get selected note data
     """
 
+    # --- Filename Sanitization ---
+
+    @staticmethod
+    def _sanitize_filename(filename: str) -> str:
+        """Sanitize filename to be compatible with Windows filesystem.
+        
+        Handles:
+        - Invalid characters: < > : " / \\ | ? *
+        - Control characters (ASCII 0-31)
+        - Reserved names: CON, PRN, AUX, NUL, COM1-9, LPT1-9
+        - Leading/trailing spaces and dots
+        - Consecutive underscores
+        
+        Args:
+            filename: The original filename.
+        
+        Returns:
+            Sanitized filename safe for all platforms (especially Windows).
+        """
+        # Windows reserved names
+        reserved_names = {
+            'con', 'prn', 'aux', 'nul',
+            'com1', 'com2', 'com3', 'com4', 'com5', 'com6', 'com7', 'com8', 'com9',
+            'lpt1', 'lpt2', 'lpt3', 'lpt4', 'lpt5', 'lpt6', 'lpt7', 'lpt8', 'lpt9'
+        }
+        
+        # Characters invalid on Windows
+        invalid_chars = r'<>:"/\|?*'
+        sanitized = filename
+        
+        # Remove control characters (ASCII 0-31)
+        sanitized = ''.join(c if ord(c) >= 32 else '' for c in sanitized)
+        
+        # Replace invalid characters
+        for char in invalid_chars:
+            sanitized = sanitized.replace(char, '_')
+        
+        # Remove leading/trailing spaces and dots
+        sanitized = sanitized.strip('. ')
+        
+        # Remove consecutive underscores
+        while '__' in sanitized:
+            sanitized = sanitized.replace('__', '_')
+        
+        # Check if result is a reserved name (without extension)
+        name_without_ext = sanitized.rsplit('.', 1)[0] if '.' in sanitized else sanitized
+        if name_without_ext.lower() in reserved_names:
+            sanitized = '_' + sanitized
+        
+        return sanitized if sanitized and sanitized.strip('_') else 'export'
+
+    @staticmethod
+    def _sanitize_file_path(file_path: str) -> str:
+        """Sanitize a complete file path to be Windows-compatible.
+        
+        Preserves the directory structure but sanitizes each path component
+        and the filename.
+        
+        Args:
+            file_path: The complete file path.
+        
+        Returns:
+            Sanitized file path safe for Windows.
+        """
+        if not file_path:
+            return 'export'
+        
+        # Use os.path to handle path properly
+        file_dir = os.path.dirname(file_path)
+        file_name = os.path.basename(file_path)
+        
+        # Sanitize only the filename, keep directory as-is
+        sanitized_name = ExportImportMixin._sanitize_filename(file_name)
+        
+        # Reconstruct path
+        if file_dir:
+            return os.path.join(file_dir, sanitized_name)
+        else:
+            return sanitized_name
+
     # --- CSV Export ---
 
     def export_to_csv(self) -> None:
@@ -35,8 +115,12 @@ class ExportImportMixin:
         if not file_path:
             return
 
+        # Ensure .csv extension
         if not file_path.endswith(".csv"):
             file_path += ".csv"
+        
+        # Sanitize the complete file path
+        file_path = self._sanitize_file_path(file_path)
 
         try:
             notes = self.db.get_all_notes()
@@ -89,15 +173,21 @@ class ExportImportMixin:
             return
 
         title = data["title"] or "note"
+        sanitized_title = self._sanitize_filename(title)
         full_html = self._build_html_content(data)
 
         file_path, _ = QFileDialog.getSaveFileName(
-            self, self.t("save_html"), f"{title}.html", "HTML Files (*.html)"
+            self, self.t("save_html"), f"{sanitized_title}.html", "HTML Files (*.html)"
         )
         if not file_path:
             return
+        
+        # Ensure .html extension
         if not file_path.endswith(".html"):
             file_path += ".html"
+        
+        # Sanitize the complete file path
+        file_path = self._sanitize_file_path(file_path)
 
         try:
             with open(file_path, "w", encoding="utf-8") as f:
@@ -158,13 +248,19 @@ class ExportImportMixin:
             return
 
         title = data["title"] or "note"
+        sanitized_title = self._sanitize_filename(title)
         file_path, _ = QFileDialog.getSaveFileName(
-            self, self.t("save_pdf"), f"{title}.pdf", "PDF Files (*.pdf)"
+            self, self.t("save_pdf"), f"{sanitized_title}.pdf", "PDF Files (*.pdf)"
         )
         if not file_path:
             return
+        
+        # Ensure .pdf extension
         if not file_path.endswith(".pdf"):
             file_path += ".pdf"
+        
+        # Sanitize the complete file path
+        file_path = self._sanitize_file_path(file_path)
 
         try:
             self._write_pdf_file(file_path, data)
