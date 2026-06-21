@@ -24,7 +24,7 @@ jobs:
       run: |
         sudo apt-get update
         #sudo apt install libgl1
-        sudo apt-get install -y libxcb-cursor0 libxkbcommon-x11-0 libgl1 xvfb
+        sudo apt-get install -y libegl1 libxcb-cursor0 libxkbcommon-x11-0 libgl1 xvfb
 
     - name: Install Python Dependencies
       run: |
