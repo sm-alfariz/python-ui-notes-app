@@ -1,6 +1,7 @@
 import sqlite3
 import os
 import contextlib
+from datetime import datetime
 
 class DatabaseManager:
     def __init__(self, db_name="notes.db"):
@@ -64,12 +65,17 @@ class DatabaseManager:
             if "is_locked" not in note_columns:
                 cursor.execute("ALTER TABLE notes ADD COLUMN is_locked INTEGER DEFAULT 0")
 
+    @staticmethod
+    def _local_now() -> str:
+        """Return the current local time as a string in 'YYYY-MM-DD HH:MM:SS' format."""
+        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
     def add_note(self, title, catatan, sumber_catatan=None, is_locked=0):
         with self._connect() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO notes (title, catatan, sumber_catatan, is_locked) VALUES (?, ?, ?, ?)",
-                (title, catatan, sumber_catatan, is_locked)
+                "INSERT INTO notes (title, catatan, sumber_catatan, is_locked, created_at) VALUES (?, ?, ?, ?, ?)",
+                (title, catatan, sumber_catatan, is_locked, self._local_now())
             )
             return cursor.lastrowid
 
