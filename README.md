@@ -137,26 +137,26 @@ The codebase was refactored from a monolithic ~1100-line `main_window.py` into a
 
 ```
                        ┌─────────────────────────────┐
-                       │         main.py              │
-                       │  QApplication + MainWindow   │
+                       │         main.py             │
+                       │  QApplication + MainWindow  │
                        └──────────────┬──────────────┘
                                       │
-                       ┌──────────────▼──────────────┐
-                       │      MainWindow              │
-                       │  (src/ui/main_window.py)     │
-                       │  Inherits from QMainWindow   │
-                       └──┬───────┬───────┬───────┬──┘
-                          │       │       │       │
-               ┌──────────┘       │       │       └──────────┐
-               │                  │       │                  │
-   ┌───────────▼────────┐ ┌──────▼──────┐ ┌────────────────▼────────┐
-   │ TableManagement     │ │  NoteOps    │ │  ExportImportMixin      │
-   │ Mixin               │ │  Mixin      │ │                         │
-   │ • display_notes()   │ │ • add_note()│ │ • export_to_csv()       │
-   │ • load_more()       │ │ • edit()    │ │ • export_as_html()      │
-   │ • context_menu()    │ │ • delete()  │ │ • export_as_pdf()       │
-   │ • pagination        │ │ • lock()    │ │ • backup/restore DB     │
-   └─────────────────────┘ └─────────────┘ └─────────────────────────┘
+                       ┌──────────────▼─────────────┐
+                       │      MainWindow            │
+                       │  (src/ui/main_window.py)   │
+                       │  Inherits from QMainWindow │
+                       └──┬───────┬────────┬─────┬──┘
+                          │       │        │     │
+               ┌──────────┘       │        │     └─────────┐
+               │                  │        │               │
+   ┌───────────▼─────────┐ ┌──────▼──────┐ ┌───────────────▼────────┐
+   │ TableManagement     │ │  NoteOps    │ │  ExportImportMixin     │
+   │ Mixin               │ │  Mixin      │ │                        │
+   │ • display_notes()   │ │ • add_note()│ │ • export_to_csv()      │
+   │ • load_more()       │ │ • edit()    │ │ • export_as_html()     │
+   │ • context_menu()    │ │ • delete()  │ │ • export_as_pdf()      │
+   │ • pagination        │ │ • lock()    │ │ • backup/restore DB    │
+   └─────────────────────┘ └─────────────┘ └────────────────────────┘
 ```
 
 - **`main.py`** — entry point. Creates `QApplication`, sets the window icon, instantiates `MainWindow`, and runs the Qt event loop.
