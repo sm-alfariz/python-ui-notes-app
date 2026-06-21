@@ -64,7 +64,7 @@ jobs:
         cp -r assets dist/stage/.catat-segala/
         cp -r src/themes dist/stage/.catat-segala/themes
         mv dist/Catat-Segala-linux dist/stage/
-        cd dist/stage && tar -czf ../../${{ matrix.asset_name }}.tar.gz Catat-Segala-linux .catat-segala
+        cd dist/stage && tar -czf ../${{ matrix.asset_name }}.tar.gz Catat-Segala-linux .catat-segala
 
     - name: Package release (Windows)
       if: runner.os == 'Windows'
@@ -74,7 +74,7 @@ jobs:
         xcopy /E /I assets dist\stage\.catat-segala\assets
         xcopy /E /I src\themes dist\stage\.catat-segala\themes
         move dist\Catat-Segala-windows.exe dist\stage\
-        cd dist\stage && tar -czf ..\..\${{ matrix.asset_name }}.tar.gz Catat-Segala-windows.exe .catat-segala
+        cd dist\stage && tar -czf ..\${{ matrix.asset_name }}.tar.gz Catat-Segala-windows.exe .catat-segala
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
@@ -86,13 +86,24 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-    - name: Download all artifacts
+    - name: Download Linux artifact
       uses: actions/download-artifact@v4
+      with:
+        name: Catat-Segala-linux
+
+    - name: Download Windows artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: Catat-Segala-windows
+
+    - name: List downloaded files
+      run: find . -name "*.tar.gz" -type f
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
       with:
+        tag_name: ${{ github.ref_name }}
+        name: ${{ github.ref_name }}
         generate_release_notes: true
         files: |
-          Catat-Segala-linux/Catat-Segala-linux.tar.gz
-          Catat-Segala-windows/Catat-Segala-windows.tar.gz
+          *.tar.gz
