@@ -885,24 +885,43 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Error", f"Gagal mem-backup database: {str(e)}")
 
     def _validate_sqlite_file(self, file_path):
-        """Check if the given file is a valid SQLite database."""
+        """Check if the given file is a valid SQLite database with notes data.
+
+        Returns:
+            "valid" - valid SQLite with notes data
+            "empty" - valid SQLite with notes table but no rows
+            "no_table" - valid SQLite without a notes table
+            "invalid" - not a valid SQLite database
+        """
         try:
             import sqlite3
             # Check file is not empty
             if os.path.getsize(file_path) == 0:
-                return False
+                return "invalid"
             # Check SQLite magic header (first 16 bytes = "SQLite format 3\000")
             with open(file_path, "rb") as f:
                 header = f.read(16)
             if header != b"SQLite format 3\x00":
-                return False
+                return "invalid"
             # Verify the file can be opened and queried
             conn = sqlite3.connect(f"file:{file_path}?mode=ro", uri=True)
             conn.execute("SELECT count(*) FROM sqlite_master")
+            # Check if notes table exists
+            cursor = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='notes'"
+            )
+            if not cursor.fetchone():
+                conn.close()
+                return "no_table"
+            # Check if notes table has any data
+            cursor = conn.execute("SELECT COUNT(*) FROM notes")
+            count = cursor.fetchone()[0]
             conn.close()
-            return True
+            if count == 0:
+                return "empty"
+            return "valid"
         except (sqlite3.DatabaseError, Exception):
-            return False
+            return "invalid"
 
     def restore_database(self):
         """Restore the database from a user-selected .db file."""
@@ -913,20 +932,40 @@ class MainWindow(QMainWindow):
             return
 
         # Validate the selected file is a valid SQLite database
-        if not self._validate_sqlite_file(file_path):
+        validation = self._validate_sqlite_file(file_path)
+        if validation == "invalid":
             QMessageBox.warning(
                 self, self.t("warning"), self.t("restore_invalid_db")
             )
             return
 
-        # Show confirmation warning
-        reply = QMessageBox.warning(
-            self,
-            self.t("warning"),
-            self.t("restore_confirm"),
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
-        )
+        # For empty or no-notes-table databases, show a specific warning
+        if validation == "no_table":
+            reply = QMessageBox.warning(
+                self,
+                self.t("warning"),
+                self.t("restore_no_notes_table"),
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+        elif validation == "empty":
+            reply = QMessageBox.warning(
+                self,
+                self.t("warning"),
+                self.t("restore_empty_db"),
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+        else:
+            # Standard confirmation for valid databases with data
+            reply = QMessageBox.warning(
+                self,
+                self.t("warning"),
+                self.t("restore_confirm"),
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+
         if reply != QMessageBox.Yes:
             return
 

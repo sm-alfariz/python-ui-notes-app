@@ -63,6 +63,8 @@ def load_translations():
             "restore_confirm": "This will replace your current database with the selected file. All current notes will be lost. Are you sure you want to continue?",
             "restore_success": "Database successfully restored from {}",
             "restore_invalid_db": "The selected file is not a valid SQLite database.",
+            "restore_empty_db": "The selected database has no notes. Are you sure you want to continue? This will replace your current database.",
+            "restore_no_notes_table": "The selected file does not contain a notes table. Are you sure you want to continue? This will replace your current database.",
             "restore_error": "Failed to restore database: {}",
             "db_not_found": "Database file not found.",
             "save": "Save",

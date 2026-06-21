@@ -81,12 +81,16 @@ class TestConfigTranslations(unittest.TestCase):
         self.assertIn("replace", t("en", "restore_confirm"))
         self.assertIn("restored", t("en", "restore_success"))
         self.assertIn("valid", t("en", "restore_invalid_db"))
+        self.assertIn("no notes", t("en", "restore_empty_db"))
+        self.assertIn("notes table", t("en", "restore_no_notes_table"))
 
     def test_translation_restore_id(self):
         self.assertEqual(t("id", "restore_db"), "Restore Database")
         self.assertIn("menggantikan", t("id", "restore_confirm"))
         self.assertIn("direstore", t("id", "restore_success"))
         self.assertIn("valid", t("id", "restore_invalid_db"))
+        self.assertIn("catatan", t("id", "restore_empty_db"))
+        self.assertIn("catatan", t("id", "restore_no_notes_table"))
 
     def test_translation_export_html(self):
         self.assertEqual(t("en", "export_html"), "Export as HTML")
@@ -158,20 +162,65 @@ class TestMainWindow(unittest.TestCase):
         self.assertTrue(callable(getattr(MainWindow, "_get_selected_note_data", None)))
 
     def test_validate_sqlite_file_valid(self):
-        """Test _validate_sqlite_file with a real SQLite database."""
+        """Test _validate_sqlite_file returns 'valid' for a DB with notes data."""
         import tempfile
         import sqlite3 as sq
 
-        # Create a valid temp SQLite file
+        # Create a valid temp SQLite file with notes table and data
         fd, path = tempfile.mkstemp(suffix=".db")
         os.close(fd)
         conn = sq.connect(path)
-        conn.execute("CREATE TABLE test (id INTEGER)")
+        conn.execute("""CREATE TABLE notes (
+            id INTEGER PRIMARY KEY,
+            title TEXT NOT NULL,
+            catatan TEXT NOT NULL,
+            sumber_catatan TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )""")
+        conn.execute("INSERT INTO notes (title, catatan) VALUES ('Test', 'Content')")
         conn.commit()
         conn.close()
 
         window = MainWindow.__new__(MainWindow)
-        self.assertTrue(window._validate_sqlite_file(path))
+        self.assertEqual(window._validate_sqlite_file(path), "valid")
+        os.unlink(path)
+
+    def test_validate_sqlite_file_empty(self):
+        """Test _validate_sqlite_file returns 'empty' for a DB with notes table but no rows."""
+        import tempfile
+        import sqlite3 as sq
+
+        fd, path = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        conn = sq.connect(path)
+        conn.execute("""CREATE TABLE notes (
+            id INTEGER PRIMARY KEY,
+            title TEXT NOT NULL,
+            catatan TEXT NOT NULL,
+            sumber_catatan TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )""")
+        conn.commit()
+        conn.close()
+
+        window = MainWindow.__new__(MainWindow)
+        self.assertEqual(window._validate_sqlite_file(path), "empty")
+        os.unlink(path)
+
+    def test_validate_sqlite_file_no_table(self):
+        """Test _validate_sqlite_file returns 'no_table' for a valid SQLite without notes table."""
+        import tempfile
+        import sqlite3 as sq
+
+        fd, path = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        conn = sq.connect(path)
+        conn.execute("CREATE TABLE other (id INTEGER)")
+        conn.commit()
+        conn.close()
+
+        window = MainWindow.__new__(MainWindow)
+        self.assertEqual(window._validate_sqlite_file(path), "no_table")
         os.unlink(path)
 
     def test_validate_sqlite_file_invalid(self):
@@ -183,13 +232,13 @@ class TestMainWindow(unittest.TestCase):
         os.close(fd)
         with open(txt, "w") as f:
             f.write("not a database")
-        self.assertFalse(window._validate_sqlite_file(txt))
+        self.assertEqual(window._validate_sqlite_file(txt), "invalid")
         os.unlink(txt)
 
         # Empty file
         fd, empty = tempfile.mkstemp(suffix=".db")
         os.close(fd)
-        self.assertFalse(window._validate_sqlite_file(empty))
+        self.assertEqual(window._validate_sqlite_file(empty), "invalid")
         os.unlink(empty)
 
     def test_get_selected_note_data_no_selection(self):
