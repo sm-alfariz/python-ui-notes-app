@@ -54,7 +54,7 @@ jobs:
     - name: Build with PyInstaller (Windows)
       if: runner.os == 'Windows'
       run: |
-        pyinstaller --onefile --icon=assets/logo.png --name Catat-Segala-windows main.py
+        pyinstaller --noconsole --onefile --icon=assets/logo.png --name Catat-Segala-windows main.py
 
     - name: Package release (Linux)
       if: runner.os == 'Linux'
