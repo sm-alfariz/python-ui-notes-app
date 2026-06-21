@@ -66,24 +66,194 @@ python3 test_app.py
 
 ## project structure
 
-The project is organized in a modular structure to separate core database operations, translation configurations, custom UI widgets, dialog windows, and the main window UI controller:
+The project is organized in a modular structure with mixins for separation of concerns, delegates for custom rendering, and utility modules:
 
 ```
-python-ui-notes-app/
-├── main.py                     # Entry point (initializes QApplication and displays MainWindow)
-├── database.py                 # Core database manager (DatabaseManager queries)
-├── language.ini                # Translations configuration
-├── requirements.txt            # Project dependencies
-├── Catat-Segala.spec           # PyInstaller spec configuration
-└── src/                        # main source package
-    ├── config.py               # Config & translation dictionary helper
-    ├── widgets/
-    │   └── custom_text_edit.py # Custom QTextEdit widget supporting clipboard image pasting
-    ├── dialogs/
-    │   └── note_dialogs.py     # Note add/edit and detail view dialog classes
-    └── ui/
-        └── main_window.py      # MainWindow UI design and controller class
+python-ui-mysql/
+├── main.py                     # Entry point — initializes QApplication and shows MainWindow
+├── database.py                 # Core database manager (SQLite CRUD queries, pagination, attachments)
+├── language.ini                # Translation keys (English, Indonesian, etc.)
+├── requirements.txt            # Python dependencies
+├── Catat-Segala.spec           # PyInstaller spec for building standalone executable
+├── test_app.py                 # Unit tests (database, config, Qt UI dialogs)
+├── test_blackbox.py            # Blackbox / integration tests
+├── assets/                     # Application icons and images
+│   ├── logo.png                #   App window icon
+│   ├── appicon.png / .svg      #   App launcher icon
+│   ├── new-notes.png           #   Context menu icon
+│   ├── edit-notes.png          #   Context menu icon
+│   ├── delete-notes.png        #   Context menu icon
+│   ├── detail-notes.png        #   Context menu icon
+│   ├── export-html.png         #   Context menu icon
+│   ├── export-pdf.png          #   Context menu icon
+│   ├── lock.png                #   Lock action icon
+│   └── unlock.png              #   Unlock action icon
+├── screen-shoots/              # App screenshots for README
+│   ├── sc-01.png ... sc-08.png
+│
+└── src/                        # Main source package
+    ├── __init__.py
+    ├── config.py               # Config constants & translation dictionary helper (t())
+    │
+    ├── dialogs/                # Dialog windows
+    │   ├── __init__.py
+    │   └── note_dialogs.py     # NoteDialog (add/edit) & NoteDetailDialog (view detail)
+    │
+    ├── themes/                 # QSS theme stylesheets
+    │   ├── default.qss
+    │   ├── facebook_dark.qss
+    │   ├── facebook_light.qss
+    │   ├── geocites_nightmare.qss
+    │   └── mac_90s_greyscale.qss
+    │
+    ├── ui/                     # UI layer
+    │   ├── __init__.py
+    │   ├── main_window.py      # MainWindow — top-level window, toolbar, menu, search, pagination
+    │   ├── theme_manager.py    # ThemeManager — loads .qss themes, applies/saves theme selection
+    │   │
+    │   ├── mixins/             # Reusable behavior mixed into MainWindow
+    │   │   ├── __init__.py
+    │   │   ├── table_management_mixin.py   # Table display, pagination, right-click context menu
+    │   │   ├── note_operations_mixin.py    # Add, edit, delete, lock/unlock, detail note operations
+    │   │   └── export_import_mixin.py      # CSV export, HTML/PDF export, database backup/restore
+    │   │
+    │   ├── delegates/          # Custom Qt delegates
+    │   │   ├── __init__.py
+    │   │   └── html_delegate.py            # HTML delegate for rendering rich text in table cells
+    │   │
+    │   └── utils/              # Small helper modules
+    │       ├── __init__.py
+    │       ├── string_utils.py             # strip_html(), build_snippet_html()
+    │       └── date_utils.py              # format_date()
+    │
+    └── widgets/                # Custom Qt widgets
+        ├── __init__.py
+        └── custom_text_edit.py # QTextEdit subclass with clipboard image paste support
 ```
+
+### Architecture overview
+
+The codebase was refactored from a monolithic ~1100-line `main_window.py` into a modular structure using **mixins** (reusable behavior classes), **delegates** (custom Qt rendering), and **utility modules** for clear separation of concerns.
+
+```
+                       ┌─────────────────────────────┐
+                       │         main.py              │
+                       │  QApplication + MainWindow   │
+                       └──────────────┬──────────────┘
+                                      │
+                       ┌──────────────▼──────────────┐
+                       │      MainWindow              │
+                       │  (src/ui/main_window.py)     │
+                       │  Inherits from QMainWindow   │
+                       └──┬───────┬───────┬───────┬──┘
+                          │       │       │       │
+               ┌──────────┘       │       │       └──────────┐
+               │                  │       │                  │
+   ┌───────────▼────────┐ ┌──────▼──────┐ ┌────────────────▼────────┐
+   │ TableManagement     │ │  NoteOps    │ │  ExportImportMixin      │
+   │ Mixin               │ │  Mixin      │ │                         │
+   │ • display_notes()   │ │ • add_note()│ │ • export_to_csv()       │
+   │ • load_more()       │ │ • edit()    │ │ • export_as_html()      │
+   │ • context_menu()    │ │ • delete()  │ │ • export_as_pdf()       │
+   │ • pagination        │ │ • lock()    │ │ • backup/restore DB     │
+   └─────────────────────┘ └─────────────┘ └─────────────────────────┘
+```
+
+- **`main.py`** — entry point. Creates `QApplication`, sets the window icon, instantiates `MainWindow`, and runs the Qt event loop.
+- **`database.py`** — `DatabaseManager` handles all SQLite operations: CRUD for notes, paginated queries, attachment management, and backup/restore.
+- **`language.ini`** — translation keys in INI format (English, Indonesian, etc.), loaded into `TRANSLATIONS` dict by `config.py`.
+- **`src/config.py`** — stores `TRANSLATIONS` dict (loaded from `language.ini`) and a `t(key)` translation helper used throughout the UI.
+
+#### `src/ui/main_window.py` — MainWindow (central controller)
+
+The `MainWindow` class inherits from `QMainWindow` and three **mixins**. It is responsible for:
+
+| Method group | Purpose |
+|---|---|
+| `_init_core_attributes()` | Initialize database, language, settings, pagination state |
+| `_setup_window()` | Set window properties (title, size, icon) |
+| `_setup_central_widget()` | Build the full main UI layout |
+| `_create_toolbar()` | Action buttons (add, edit, delete, detail, refresh) and language selector |
+| `_create_search_bar()` | Search input and clear button |
+| `_create_table_widget()` | Notes table with custom `HTMLDelegate` on content column |
+| `_create_pagination_footer()` | Status label and "Load More" button |
+| `_create_menu_bar()` | File, View, About menus |
+| `t(key)` | Translation helper (reads from `TRANSLATIONS`) |
+| `_retranslate_ui()` | Update all UI text when language changes |
+
+#### `src/ui/mixins/` — behavior mixins
+
+Each mixin handles one responsibility. `MainWindow` inherits from all three:
+
+| Mixin | Purpose | Key methods |
+|---|---|---|
+| **`table_management_mixin.py`** | Table display, pagination, right-click context menu | `display_notes()`, `load_more_notes()`, `show_context_menu()`, `_populate_table_row()` |
+| **`note_operations_mixin.py`** | Create, read, update, delete, lock/unlock notes | `add_note()`, `edit_note()`, `delete_note()`, `view_detail()`, `toggle_lock()` |
+| **`export_import_mixin.py`** | CSV/HTML/PDF export, database backup/restore | `export_to_csv()`, `export_note_as_html()`, `export_note_as_pdf()`, `backup_notes()`, `restore_database()` |
+
+#### `src/ui/theme_manager.py` — theme management
+
+`ThemeManager` loads `.qss` stylesheets from `src/themes/`, applies them to the app, and persists the user's choice in `QSettings`:
+
+| Method | Purpose |
+|---|---|
+| `get_saved_theme()` | Retrieve saved theme from settings |
+| `save_theme(filename)` | Persist theme selection |
+| `apply_theme(qss_path)` | Apply QSS stylesheet to the application |
+| `populate_theme_menu()` | Build theme submenu in the View menu |
+
+#### `src/ui/delegates/` — custom Qt delegates
+
+| Module | Purpose |
+|---|---|
+| `html_delegate.py` | `HTMLDelegate` renders HTML content inside `QTableWidget` cells using `QTextDocument`. Handles selection highlighting and dynamic row sizing. |
+
+#### `src/ui/utils/` — small helper modules
+
+| Module | Functions | Purpose |
+|---|---|---|
+| `string_utils.py` | `strip_html()`, `build_snippet_html()` | Remove HTML tags, extract formatted snippets for table preview |
+| `date_utils.py` | `format_date()` | Convert `"YYYY-MM-DD HH:MM:SS"` → `"DD/MM/YYYY HH:MM:SS"` |
+
+#### `src/dialogs/` — dialog windows
+
+| Module | Classes | Purpose |
+|---|---|---|
+| `note_dialogs.py` | `NoteDialog` | Add/edit dialog with rich text editor, attachment support, and clipboard image paste |
+| | `NoteDetailDialog` | Read-only detail view of a note with metadata and attachments |
+
+#### `src/widgets/` — custom Qt widgets
+
+| Module | Class | Purpose |
+|---|---|---|
+| `custom_text_edit.py` | `CustomTextEdit` | Extends `QTextEdit` to support pasting images directly from the clipboard (embedded as base64 HTML) |
+
+#### `src/themes/` — QSS stylesheets
+
+| File | Style |
+|---|---|
+| `default.qss` | Default theme |
+| `facebook_dark.qss` | Facebook-inspired dark theme |
+| `facebook_light.qss` | Facebook-inspired light theme |
+| `geocites_nightmare.qss` | Retro Geocities-inspired theme |
+| `mac_90s_greyscale.qss` | 90s Mac greyscale theme |
+
+#### `assets/` — icons
+
+Icons used in the toolbar and right-click context menu:
+
+| Icon | Used for |
+|---|---|
+| `logo.png` | App window icon |
+| `appicon.png` / `appicon.svg` | App launcher icon |
+| `new-notes.png` | New note action |
+| `edit-notes.png` | Edit note context menu |
+| `delete-notes.png` | Delete note context menu |
+| `detail-notes.png` | View detail context menu |
+| `export-html.png` | Export as HTML context menu |
+| `export-pdf.png` | Export as PDF context menu |
+| `lock.png` | Lock note action |
+| `unlock.png` | Unlock note action |
 
 ## Database Schema & Relations
 
