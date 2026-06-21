@@ -84,21 +84,21 @@ def test_validate_sqlite_file():
     db.add_note("Validate Test", "<p>Content</p>")
 
     valid_path = f".catat-segala/{db_src}"
-    assert m._validate_sqlite_file(valid_path) is True
+    assert m._validate_sqlite_file(valid_path) == "valid"
     print("Valid SQLite file test passed!")
 
     # Test with a text file
     txt_path = ".catat-segala/test_validate.txt"
     with open(txt_path, "w") as f:
         f.write("This is not a database")
-    assert m._validate_sqlite_file(txt_path) is False
+    assert m._validate_sqlite_file(txt_path) == "invalid"
     print("Invalid text file test passed!")
 
     # Test with an empty file
     empty_path = ".catat-segala/test_validate_empty.db"
     with open(empty_path, "w") as f:
         pass
-    assert m._validate_sqlite_file(empty_path) is False
+    assert m._validate_sqlite_file(empty_path) == "invalid"
     print("Empty file test passed!")
 
     # Cleanup
