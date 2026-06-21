@@ -6,11 +6,44 @@ This app was inspired by my need to quickly save and search notes.
 
 This app uses SQLite3 as the database for an easy standalone app experience.
 
-## how to run
+## Install
 
-Make sure you have Python 3.13 or higher. Create a virtual environment and install requirements with `pip install -r requirements.txt`.
+### Download Pre-built Binary
 
-Then run the app with `python -m main`.
+Go to [Releases](https://github.com/sm-alfariz/python-ui-mysql/releases) and download the latest release for your platform:
+
+- **Linux**: `Catat-Segala-linux.tar.gz`
+- **Windows**: `Catat-Segala-windows.tar.gz`
+
+Extract and run:
+
+**Linux:**
+```bash
+tar -xzf Catat-Segala-linux.tar.gz
+cd .catat-segala
+./Catat-Segala-linux
+```
+
+**Windows:**
+```powershell
+tar -xzf Catat-Segala-windows.tar.gz
+cd .catat-segala
+Catat-Segala-windows.exe
+```
+
+### Run from Source
+
+Requires Python 3.13+.
+
+```bash
+git clone https://github.com/sm-alfariz/python-ui-mysql.git
+cd python-ui-mysql
+python -m venv .venv
+source .venv/bin/activate   # Linux/macOS
+# .venv\Scripts\activate    # Windows
+pip install -r requirements.txt
+python -m main
+```
 
 ![Screenshot 1](screen-shoots/sc-01.png)
 ![Screenshot 2](screen-shoots/sc-02.png)
