@@ -15,7 +15,7 @@ from src.dialogs.note_dialogs import NoteDialog, NoteDetailDialog
 from src.ui.main_window import MainWindow
 
 # Initialize QApplication once for the entire test suite run (mandatory for Qt widgets)
-app = QApplication.instance() or QApplication(sys.argv)
+app = QApplication.instance() or QApplication([])
 
 class TestDatabase(unittest.TestCase):
     def setUp(self):

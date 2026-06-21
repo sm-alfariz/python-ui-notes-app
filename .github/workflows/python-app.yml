@@ -40,6 +40,8 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
     - name: Test with pytest (Headless Mode)
+      env:
+        QT_QPA_PLATFORM: offscreen
       run: |
         xvfb-run -a pytest --cov=./ --cov-report=xml
 
