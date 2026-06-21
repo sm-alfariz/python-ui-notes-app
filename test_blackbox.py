@@ -38,6 +38,8 @@ from database import DatabaseManager
 from src.config import t, TRANSLATIONS
 from src.dialogs.note_dialogs import NoteDialog, NoteDetailDialog
 from src.ui.main_window import MainWindow
+from src.ui.utils.date_utils import format_date as standalone_format_date
+from src.ui.utils.string_utils import strip_html as standalone_strip_html
 
 app = QApplication.instance() or QApplication(sys.argv)
 
@@ -476,13 +478,13 @@ class TestMainWindowIntegration(unittest.TestCase):
 
     def test_window_has_expected_columns(self):
         window = MainWindow()
-        self.assertEqual(window.tableWidget.columnCount(), 6)
+        self.assertEqual(window.tableWidget.columnCount(), 7)
 
     def test_window_starts_with_zero_rows(self):
         window = MainWindow()
         # Window loads notes from DB on init; just verify table is accessible
         self.assertIsNotNone(window.tableWidget)
-        self.assertEqual(window.tableWidget.columnCount(), 6)
+        self.assertEqual(window.tableWidget.columnCount(), 7)
 
     def test_add_note_updates_table(self):
         window = MainWindow()
@@ -693,37 +695,31 @@ class TestEdgeCases(unittest.TestCase):
         self.assertEqual(len(self.db.get_all_notes()), 0)
 
     def test_format_date_valid(self):
-        window = MainWindow()
-        result = window.format_date("2025-06-15 10:30:00")
+        result = standalone_format_date("2025-06-15 10:30:00")
         self.assertEqual(result, "15/06/2025 10:30:00")
 
     def test_format_date_invalid(self):
-        window = MainWindow()
-        result = window.format_date("not-a-date")
+        result = standalone_format_date("not-a-date")
         self.assertEqual(result, "not-a-date")
 
     def test_format_date_empty(self):
-        window = MainWindow()
-        result = window.format_date("")
+        result = standalone_format_date("")
         self.assertEqual(result, "")
 
     def test_strip_html(self):
-        window = MainWindow()
-        result = window.strip_html("<p>Hello <b>World</b></p>")
+        result = standalone_strip_html("<p>Hello <b>World</b></p>")
         self.assertNotIn("<p>", result)
         self.assertNotIn("<b>", result)
         self.assertIn("Hello World", result)
 
     def test_strip_html_entities(self):
-        window = MainWindow()
-        result = window.strip_html("a<b>c&d")
+        result = standalone_strip_html("a<b>c&d")
         self.assertNotIn("<", result)
         self.assertNotIn(">", result)
 
     def test_strip_html_empty(self):
-        window = MainWindow()
-        self.assertEqual(window.strip_html(""), "")
-        self.assertEqual(window.strip_html(None), "")
+        self.assertEqual(standalone_strip_html(""), "")
+        self.assertEqual(standalone_strip_html(None), "")
 
     def test_pagination_offset_beyond_available(self):
         self.db.add_note("Only One", "<p>One</p>")
