@@ -39,26 +39,52 @@ jobs:
     - name: Install Python Dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pyinstaller pyside6 pyside6-addons pyside6-essentials
+        pip install nuitka ordered-set
         pip install -r requirements.txt
 
-    - name: Build with PyInstaller
-      run: |
-        pyinstaller --onefile --name Catat-Segala main.py
-
-    - name: Rename artifact (Linux)
+    - name: Build with Nuitka (Linux)
       if: runner.os == 'Linux'
-      run: mv dist/Catat-Segala dist/${{ matrix.artifact_name }}
+      run: |
+        python -m nuitka --standalone --onefile \
+          --enable-plugin=pyside6 \
+          --output-filename=Catat-Segala-linux \
+          --output-dir=dist \
+          main.py
 
-    - name: Rename artifact (Windows)
+    - name: Build with Nuitka (Windows)
       if: runner.os == 'Windows'
-      run: mv dist/Catat-Segala.exe dist/${{ matrix.artifact_name }}
+      run: |
+        python -m nuitka --standalone --onefile `
+          --enable-plugin=pyside6 `
+          --output-filename=Catat-Segala-windows.exe `
+          --output-dir=dist `
+          main.py
+
+    - name: Package release (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        mkdir -p dist/stage/.catat-segala
+        cp language.ini dist/stage/.catat-segala/
+        cp -r assets dist/stage/.catat-segala/
+        cp -r src/themes dist/stage/.catat-segala/themes
+        mv dist/Catat-Segala-linux dist/stage/
+        cd dist/stage && tar -czf ../../${{ matrix.asset_name }}.tar.gz Catat-Segala-linux .catat-segala
+
+    - name: Package release (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        mkdir dist\stage\.catat-segala
+        copy language.ini dist\stage\.catat-segala\
+        xcopy /E /I assets dist\stage\.catat-segala\assets
+        xcopy /E /I src\themes dist\stage\.catat-segala\themes
+        move dist\Catat-Segala-windows.exe dist\stage\
+        cd dist\stage && tar -czf ..\..\${{ matrix.asset_name }}.tar.gz Catat-Segala-windows.exe .catat-segala
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.asset_name }}
-        path: dist/${{ matrix.artifact_name }}
+        path: dist/${{ matrix.asset_name }}.tar.gz
 
   release:
     needs: build
@@ -72,5 +98,5 @@ jobs:
       with:
         generate_release_notes: true
         files: |
-          Catat-Segala-linux/Catat-Segala-linux
-          Catat-Segala-windows/Catat-Segala-windows
+          Catat-Segala-linux/Catat-Segala-linux.tar.gz
+          Catat-Segala-windows/Catat-Segala-windows.tar.gz
