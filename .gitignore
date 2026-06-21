@@ -57,3 +57,6 @@ rc_*.py
 .catat-segala
 MY-NEED.md
 *.spec
+
+# Nuitka build
+build/
