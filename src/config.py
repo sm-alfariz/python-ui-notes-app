@@ -83,6 +83,7 @@ def load_translations():
             "remove_attachment": "Remove Selected",
             "save_attachment": "Save Attachment",
             "no_attachments": "No attachments",
+            "no_attachment": "No attachments",
             "export_html": "Export as HTML",
             "export_pdf": "Export as PDF",
             "save_html": "Save as HTML",

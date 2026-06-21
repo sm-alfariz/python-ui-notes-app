@@ -185,7 +185,7 @@ class MainWindow(QMainWindow):
 
         # Table widget
         self.tableWidget = QTableWidget()
-        self.tableWidget.setColumnCount(6)
+        self.tableWidget.setColumnCount(7)
         self.retranslate_table_headers()
         self.tableWidget.setColumnHidden(0, True)
         self.tableWidget.setSelectionBehavior(QTableWidget.SelectRows)
@@ -276,6 +276,7 @@ class MainWindow(QMainWindow):
                 self.t("note"),
                 self.t("source"),
                 self.t("lock"),
+                self.t("attachments"),
                 self.t("date_time"),
             ]
         )
@@ -424,6 +425,10 @@ class MainWindow(QMainWindow):
         start_row = self.tableWidget.rowCount()
         self.tableWidget.setRowCount(start_row + len(notes))
 
+        # Batch-fetch attachment counts for all notes in this page
+        note_ids = [n[0] for n in notes]
+        att_counts = self.db.get_attachment_counts(note_ids)
+
         for i, note in enumerate(notes):
             row_index = start_row + i
             # note = (id, title, catatan_html, sumber, created_at, is_locked)
@@ -483,9 +488,18 @@ class MainWindow(QMainWindow):
             item_lock.setData(Qt.UserRole, is_locked)
             self.tableWidget.setItem(row_index, 4, item_lock)
 
-            # Date (column shifted to 5)
+            # Attachment count (column 5)
+            count = att_counts.get(note[0], 0)
+            att_text = str(count) if count > 0 else self.t("no_attachments")
+            item_att = QTableWidgetItem(att_text)
+            if count > 0:
+                item_att.setToolTip(self.t("attachments").rstrip(":"))
+            item_att.setTextAlignment(Qt.AlignCenter)
+            self.tableWidget.setItem(row_index, 5, item_att)
+
+            # Date (column 6)
             formatted_date = self.format_date(note[4])
-            self.tableWidget.setItem(row_index, 5, QTableWidgetItem(formatted_date))
+            self.tableWidget.setItem(row_index, 6, QTableWidgetItem(formatted_date))
 
             row_h = 45 if is_locked else 35
             self.tableWidget.setRowHeight(row_index, row_h)
@@ -696,7 +710,7 @@ class MainWindow(QMainWindow):
         catatan_html = self.tableWidget.item(selected_row, 2).data(Qt.UserRole)
         sumber = self.tableWidget.item(selected_row, 3).data(Qt.UserRole)
         is_locked = self.tableWidget.item(selected_row, 4).data(Qt.UserRole)
-        created_at = self.tableWidget.item(selected_row, 5).text()
+        created_at = self.tableWidget.item(selected_row, 6).text()
 
         dialog = NoteDetailDialog(
             self,
@@ -1001,7 +1015,7 @@ class MainWindow(QMainWindow):
             "title": self.tableWidget.item(selected_row, 1).data(Qt.UserRole),
             "catatan_html": self.tableWidget.item(selected_row, 2).data(Qt.UserRole),
             "sumber": self.tableWidget.item(selected_row, 3).data(Qt.UserRole),
-            "created_at": self.tableWidget.item(selected_row, 5).text(),
+            "created_at": self.tableWidget.item(selected_row, 6).text(),
         }
 
     def export_note_as_html(self):

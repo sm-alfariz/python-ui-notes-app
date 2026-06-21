@@ -117,6 +117,19 @@ class DatabaseManager:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM attachment_file WHERE id = ?", (attachment_id,))
 
+    def get_attachment_counts(self, note_ids):
+        """Return a dict mapping note_id -> attachment count for the given IDs."""
+        if not note_ids:
+            return {}
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            placeholders = ",".join("?" for _ in note_ids)
+            cursor.execute(
+                f"SELECT notes_id, COUNT(*) FROM attachment_file WHERE notes_id IN ({placeholders}) GROUP BY notes_id",
+                note_ids,
+            )
+            return {row[0]: row[1] for row in cursor.fetchall()}
+
     def search_notes(self, query):
         with self._connect() as conn:
             cursor = conn.cursor()

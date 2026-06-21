@@ -150,7 +150,7 @@ class TestMainWindow(unittest.TestCase):
 
     def test_main_window_init(self):
         self.assertEqual(self._window.windowTitle(), t("en", "app_title"))
-        self.assertEqual(self._window.tableWidget.columnCount(), 6)
+        self.assertEqual(self._window.tableWidget.columnCount(), 7)
         self.assertGreaterEqual(self._window.tableWidget.rowCount(), 0)
 
     def test_main_window_has_restore_and_export_methods(self):
