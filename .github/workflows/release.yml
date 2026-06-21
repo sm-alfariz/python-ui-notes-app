@@ -86,13 +86,24 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-    - name: Download all artifacts
+    - name: Download Linux artifact
       uses: actions/download-artifact@v4
+      with:
+        name: Catat-Segala-linux
+
+    - name: Download Windows artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: Catat-Segala-windows
+
+    - name: List downloaded files
+      run: find . -name "*.tar.gz" -type f
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
       with:
+        tag_name: ${{ github.ref_name }}
+        name: ${{ github.ref_name }}
         generate_release_notes: true
         files: |
-          Catat-Segala-linux/Catat-Segala-linux.tar.gz
-          Catat-Segala-windows/Catat-Segala-windows.tar.gz
+          *.tar.gz
